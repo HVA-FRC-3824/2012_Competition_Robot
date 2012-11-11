@@ -55,8 +55,7 @@ typedef struct IVA_Data_Struct
 static IVA_Data* IVA_InitData(int numSteps, int numCoordSys);
 static int IVA_DisposeData(IVA_Data* ivaData);
 static int IVA_DisposeStepResults(IVA_Data* ivaData, int stepIndex);
-static int IVA_CLRThreshold(Image* image, int min1, int max1, int min2,
-      int max2, int min3, int max3, int colorMode);
+static int IVA_CLRExtractLuminance(Image* image);
 static int IVA_ParticleFilter(Image* image, int pParameter[], float plower[],
       float pUpper[], int pCalibrated[], int pExclude[], int criteriaCount,
       int rejectMatches, int connectivity);
@@ -80,7 +79,7 @@ int IVA_ProcessImage(Image *image,
    float plower[1] =
    { 0 };
    float pUpper[1] =
-   { 400 };
+   { 2000 };
    int pCalibrated[1] =
    { 0 };
    int pExclude[1] =
@@ -94,10 +93,16 @@ int IVA_ProcessImage(Image *image,
    int *pCalibratedMeasurements = 0;
 
    // Initializes internal data (buffers and array of points for caliper measurements)
-   VisionErrChk(ivaData = IVA_InitData(4, 0));
+   VisionErrChk(ivaData = IVA_InitData(5, 0));
 
-   VisionErrChk(IVA_CLRThreshold(image, 0, 170, 210, 255, 140, 255,
-               IMAQ_RGB));
+   VisionErrChk(IVA_CLRExtractLuminance(image));
+
+   //-------------------------------------------------------------------//
+   //                        Automatic Threshold                        //
+   //-------------------------------------------------------------------//
+
+   // Thresholds the image.
+   VisionErrChk(imaqAutoThreshold2(image, image, 2, IMAQ_THRESH_CLUSTERING, NULL));
 
    //-------------------------------------------------------------------//
    //                  Advanced Morphology: Convex Hull                 //
@@ -110,7 +115,7 @@ int IVA_ProcessImage(Image *image,
                pCalibrated, pExclude, 1, TRUE, TRUE));
 
    VisionErrChk(IVA_Particle(image, TRUE, pPixelMeasurements, 81,
-               pCalibratedMeasurements, 0, ivaData, 3, results));
+               pCalibratedMeasurements, 0, ivaData, 4, results));
 
    // Releases the memory allocated in the IVA_Data structure.
    IVA_DisposeData(ivaData);
@@ -120,53 +125,34 @@ int IVA_ProcessImage(Image *image,
 
 ////////////////////////////////////////////////////////////////////////////////
 //
-// Function Name: IVA_CLRThreshold
+// Function Name: IVA_CLRExtractLuminance
 //
-// Description  : Thresholds a color image.
+// Description  : Extracts the luminance plane from a color image.
 //
-// Parameters   : image      -  Input image
-//                min1       -  Minimum range for the first plane
-//                max1       -  Maximum range for the first plane
-//                min2       -  Minimum range for the second plane
-//                max2       -  Maximum range for the second plane
-//                min3       -  Minimum range for the third plane
-//                max3       -  Maximum range for the third plane
-//                colorMode  -  Color space in which to perform the threshold
+// Parameters   : image  - Input image
 //
 // Return Value : success
 //
 ////////////////////////////////////////////////////////////////////////////////
-static int IVA_CLRThreshold(Image* image, int min1, int max1, int min2,
-      int max2, int min3, int max3, int colorMode)
+static int IVA_CLRExtractLuminance(Image* image)
 {
    int success = 1;
-   Image* thresholdImage;
-   Range plane1Range;
-   Range plane2Range;
-   Range plane3Range;
+   Image* plane;
 
    //-------------------------------------------------------------------//
-   //                          Color Threshold                          //
+   //                         Extract Color Plane                       //
    //-------------------------------------------------------------------//
 
-   // Creates an 8 bit image for the thresholded image.
-   VisionErrChk(thresholdImage = imaqCreateImage(IMAQ_IMAGE_U8, 7));
+   // Creates an 8 bit image that contains the extracted plane.
+   VisionErrChk(plane = imaqCreateImage(IMAQ_IMAGE_U8, 7));
 
-   // Set the threshold range for the 3 planes.
-   plane1Range.minValue = min1;
-   plane1Range.maxValue = max1;
-   plane2Range.minValue = min2;
-   plane2Range.maxValue = max2;
-   plane3Range.minValue = min3;
-   plane3Range.maxValue = max3;
+   // Extracts the luminance plane
+   VisionErrChk(imaqExtractColorPlanes(image, IMAQ_HSL, NULL, NULL, plane));
 
-   // Thresholds the color image.
-   VisionErrChk(imaqColorThreshold(thresholdImage, image, 1, (ColorMode)colorMode, &plane1Range, &plane2Range, &plane3Range));
+   // Copies the color plane in the main image.
+   VisionErrChk(imaqDuplicate(image, plane));
 
-   // Copies the threshold image in the souce image.
-   VisionErrChk(imaqDuplicate(image, thresholdImage));
-
-   Error: imaqDispose(thresholdImage);
+   Error: imaqDispose(plane);
 
    return success;
 }

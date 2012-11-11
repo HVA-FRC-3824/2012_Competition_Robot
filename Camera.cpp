@@ -8,7 +8,7 @@
 #define GYRO_CONVERSION               0.0044
 // TODO - tweak
 //#define PIXEL_CONVERSION             0.00009
-#define PIXEL_CONVERSION             0.0001
+#define PIXEL_CONVERSION             0.00025
 
 // Incress the value of the Voltage offset to incress the distance of the shooter.
 // Calculated shooter voltage offset     29.32880164
@@ -215,14 +215,19 @@ int MyRobot::readCamera(double &heightOfTriangle, double &distanceToTarget,
       }
       else // In Autonomous
       {
-         //Todo - add in autnomous volt
-//         double cameraValue = (-0.00001894 * pow(heightOfTriangle, 3))
-//               + (0.00602003 * pow(heightOfTriangle, 2)) + (-0.64413759
-//               * heightOfTriangle) + SHOOTER_VOLTAGE_OFFSET;
-//         if ((targetStatus == 0) && (cameraValue
-//               >= MIN_SHOOTER_VOLTAGE_AUTONOMOUS) && (cameraValue
-//               <= MAX_SHOOTER_VOLTAGE_AUTONOMOUS))
-//            voltageToDriveShooter = cameraValue;
+         printf("Volate: %f", voltageToDriveShooter);
+//         if (m_driverStationEnhancedIO->GetDigital(AUTONOMOUSLY_RUN_SHOOTER)
+//               == true)
+//         {
+//            //Todo - add in autnomous volt
+//            double cameraValue = (-0.00001894 * pow(heightOfTriangle, 3))
+//                  + (0.00602003 * pow(heightOfTriangle, 2)) + (-0.64413759
+//                  * heightOfTriangle) + SHOOTER_VOLTAGE_OFFSET;
+//            if ((targetStatus == 0) && (cameraValue
+//                  >= MIN_SHOOTER_VOLTAGE_AUTONOMOUS) && (cameraValue
+//                  <= MAX_SHOOTER_VOLTAGE_AUTONOMOUS))
+//               voltageToDriveShooter = cameraValue;
+//         }
       }
 
    }
@@ -240,7 +245,9 @@ int MyRobot::readCamera(double &heightOfTriangle, double &distanceToTarget,
 
    // Calculate the value to rotate the shooter to.
    // ToDO -add in 
-   if ((targetStatus == 0 || targetStatus == 1 ) && IsOperatorControl())
+   if ((targetStatus == 0 || targetStatus == 1) && (IsOperatorControl()
+         || (m_driverStationEnhancedIO->GetDigital(AUTONOMOUSLY_RUN_SHOOTER)
+               == true)))
    {
       // Only Calculate pixel off if targets are found
       pixelOff = ((results[TOP_TARGET][CENTER_OF_MASS_X_INDEX] + PIXEL_OFFSET)
@@ -251,7 +258,7 @@ int MyRobot::readCamera(double &heightOfTriangle, double &distanceToTarget,
       // No targets found so no pixel error
       pixelOff = 0;
    }
-   
+
    valueToRotate = pixelOff * PIXEL_CONVERSION;
    printf("Pixel Off: %f\nValue to Rotate BG: %f\n\n", pixelOff, valueToRotate);
 

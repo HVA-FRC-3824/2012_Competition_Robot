@@ -239,11 +239,13 @@ void MyRobot::shootTwoBalls()
             autoState = ROTATE_FERRIS;
             m_ballLiftSolenoid->Set(DoubleSolenoid::kReverse);
             m_ferrisWheel->Set(FERRIS_ROTATE_SPEED);
+            time = Timer::GetFPGATimestamp();
          }
          break;
       case ROTATE_FERRIS:
          cameraControl();
-         if (m_ferrisWheelStop->Get() == true && previousFerris == false)
+         //if (m_ferrisWheelStop->Get() == true && previousFerris == false)
+         if (Timer::GetFPGATimestamp()-time > 1)
          {
             m_ferrisWheel->Set(0.0);
             autoState = SHOOT_SECOND_BALL;

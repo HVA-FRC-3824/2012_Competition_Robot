@@ -109,7 +109,7 @@
 #define MIN_SHOOTER_SPEED_PERCENT              0.3f
 #define MAX_SHOOTER_SPEED_PERCENT              1.0f
 #define MAX_ROBOT_VOLTAGE                      12
-#define DEFAULT_AUTONOMOUS_VOLTAGE             6.8
+#define DEFAULT_AUTONOMOUS_VOLTAGE             7.0
 #define MIN_SHOOTER_VOLTAGE_AUTONOMOUS         6.0
 #define MAX_SHOOTER_VOLTAGE_AUTONOMOUS         7.75
 
