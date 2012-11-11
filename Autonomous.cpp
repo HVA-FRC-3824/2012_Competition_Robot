@@ -1,147 +1,235 @@
 #include "MyRobot.h"
 
-#define MIN_SPINUP_TIME                     4    // JWY - TODO shorten, if possible
-#define AUTO_MAX_SPEED                      0.2
+/*************************** Local Defines ***************************************/
+#define MIN_SPINUP_TIME                     3.0
 
-#define HACKED_SHOOTER_SPEED                1200
+#define DISTANCE_TO_BRIDGE                  10.0
+
+#define TIME_FOR_PISTON_TO_MOVE             1.0
+
+#define VELOCITY_FOR_TOP_GOAL_AT_KEY        2100.0
+
+#define DISTANCE_TO_SHOOTING_POSITION_HIGH  56.0
+#define VELOCITY_TO_SHOOTING_POSITION_HIGH  2000.0
+
+#define DISTANCE_TO_SHOOTING_POSITION_MID   12.0
+#define VELOCITY_TO_SHOOTING_POSITION_MID   1276.0
+/*********************************************************************************/
 
 /**
  * Run autonomous mode
  */
 void MyRobot::Autonomous()
 {
-   m_shooterRotationControlState = kAutonomous;
+   double time;
 
-   // Enable the jaguars
+   // Enable the jaguars and victor motor controllers
    m_rightMotor->EnableControl();
    m_leftMotor->EnableControl();
    m_shooterRotate->EnableControl();
-//   m_shooterWheel->EnableControl();
 
-   double time = Timer::GetFPGATimestamp();
+   // determine the control panel shooter mode and enable the shooter.
+   if (m_driverStationEnhancedIO->GetDigital(SHOOTER_VOLTAGE_MODE) == true)
+   {
+      // set the shooter to voltage mode
+      if (m_shooterWheel->GetControlMode() != CANJaguar::kVoltage)
+         setShooterModeToVoltage();
+   }
+   else
+   {
+      // set the shooter to PWM mode
+      if (m_shooterWheel->GetControlMode() != CANJaguar::kSpeed)
+         setShooterModeToSpeed();
+   }
 
    // Combined the autonomous switches into one value
    int autoSwitchValue = (m_buttonBox->GetRawButton(AUTO_SWITCH_2) << 2)
          + (m_buttonBox->GetRawButton(AUTO_SWITCH_1) << 1)
          + m_buttonBox->GetRawButton(AUTO_SWITCH_0);
 
-   printf("Auto mode: %i\n", autoSwitchValue);
+   // Could specify shooting mode
+   //   setShooterModeToSpeed();
+
+   // get the present time
+   time = Timer::GetFPGATimestamp();
 
    switch (autoSwitchValue)
    {
    case 1:
-      // Shoot Two Balls
+   {
+      // wait for shooter to reach speed
       while ((Timer::GetFPGATimestamp() - time) < MIN_SPINUP_TIME)
       {
-         cameraControl();
+         // use the camera for tracking, if enabled
+         // Note: also keeps the shooter wheel running
+         runShooterControl(VELOCITY_FOR_TOP_GOAL_AT_KEY);
       }
-      shootTwoBalls();
+
+      // Shoot Two Balls
+      shootTwoBalls(VELOCITY_FOR_TOP_GOAL_AT_KEY);
       break;
+   }
 
    case 2:
+   {
       // Wait 5 Sec Shoot Two Balls
-      time = Timer::GetFPGATimestamp();
       while ((Timer::GetFPGATimestamp() - time) < 5)
       {
-         cameraControl();
+         // use the camera for tracking, if enabled
+         // Note: also keeps the shooter wheel running
+         runShooterControl(VELOCITY_FOR_TOP_GOAL_AT_KEY);
       }
-      shootTwoBalls();
+
+      // shoot 2 balls
+      shootTwoBalls(VELOCITY_FOR_TOP_GOAL_AT_KEY);
       break;
+   }
 
    case 3:
+   {
       // Wait 10 Sec Shoot Two Balls
-      time = Timer::GetFPGATimestamp();
       while ((Timer::GetFPGATimestamp() - time) < 10)
       {
-         cameraControl();
+         // use the camera for tracking, if enabled
+         // Note: also keeps the shooter wheel running
+         runShooterControl(VELOCITY_FOR_TOP_GOAL_AT_KEY);
       }
-      shootTwoBalls();
+
+      // shoot 2 balls
+      shootTwoBalls(VELOCITY_FOR_TOP_GOAL_AT_KEY);
       break;
+   }
 
    case 4:
+   {
       // Drive Dump Balls Center Bridge Drive Forward and Shoot Balls
-      driveToCenterBridge();
+
+      // Calculate the distance to the bridge
+      // Drive to shooting position then shoot
+      // Make distance negative so that the robot will drive backwards
+      float distanceToDrive = -((m_backUltra->GetRangeInches()
+            - DISTANCE_TO_BRIDGE) / 12.0);
+
+      printf("Distance to drive back: %f\n", distanceToDrive);
+
+      // Drive to the center bridge
+      driveAndRunShooter(distanceToDrive);
+
+      printf("DumpingBridge\n");
+
+      // Dump the bridge
       dumpBridge();
-      driveFromCenterBridge();
-      shootTwoBalls();
+
+      //      // Drive back to the center
+      //      driveAndRunShooter(distanceToDrive,
+      //            VELOCITY_FOR_TOP_GOAL_AT_KEY);
+
+      // Drive to shooting position then shoot
+      distanceToDrive = (m_frontUltra->GetRangeInches()
+            - DISTANCE_TO_SHOOTING_POSITION_HIGH) / 12.0;
+
+      printf("Distance to drive forward: %f\n", distanceToDrive);
+
+      // drive to the shooting position
+      // Note: calls runShooterControl for aiming and keeps the shooter running
+      driveAndRunShooter(distanceToDrive, 0.4, VELOCITY_TO_SHOOTING_POSITION_HIGH);
+
+      // shoot 2 balls
+      shootTwoBalls(VELOCITY_FOR_TOP_GOAL_AT_KEY);
+
       break;
+   }
 
    case 5:
-      // Drive Dump Balls Alliance Bridge Drive Forward and Shoot Balls
-      driveToAllianceBridge();
-      dumpBridge();
-      driveFromAllianceBridge();
-      shootTwoBalls();
+   {
+      // Drive and shoot to the top goal.
+
+      // Drive to shooting position then shoot
+      float distanceToDrive = (m_frontUltra->GetRangeInches()
+            - DISTANCE_TO_SHOOTING_POSITION_HIGH) / 12.0;
+
+      // drive to the shooting position
+      // Note: calls runShooterControl for aiming and keeps the shooter running
+      driveAndRunShooter(distanceToDrive, DEFAULT_AUTO_SPEED, VELOCITY_TO_SHOOTING_POSITION_HIGH);
+
+      // get the pressent time
+      time = Timer::GetFPGATimestamp();
+
+//      // wait for two seconds - TODO - NEEDED?
+//      while (time - Timer::GetFPGATimestamp() > 2)
+//      {
+//         // use the camera for tracking, if enabled
+//         // Note: also keeps the shooter wheel running
+//         runShooterControl(VELOCITY_TO_SHOOTING_POSITION_HIGH);
+//      }
+
+      // shoot 2 balls
+      shootTwoBalls(VELOCITY_TO_SHOOTING_POSITION_HIGH);
+      break;
+   }
 
    case 6:
-      while ((Timer::GetFPGATimestamp() - time) < MIN_SPINUP_TIME)
-      {
-         cameraControl();
-      }
-      // Shoot Balls Drive Dump Balls on Alliance Bridge
-      shootTwoBalls();
-      driveToAllianceBridge();
-      dumpBridge();
+   {
+      // Drive to shooting position then shoot
+      float distanceToDrive = (m_frontUltra->GetRangeInches()
+            - DISTANCE_TO_SHOOTING_POSITION_MID) / 12.0;
+
+      // drive to the shooting position
+      // Note: calls runShooterControl for aiming and keeps the shooter running
+      driveAndRunShooter(distanceToDrive, DEFAULT_AUTO_SPEED, VELOCITY_TO_SHOOTING_POSITION_MID);
+
+      // get the pressent time
+      time = Timer::GetFPGATimestamp();
+
+      // wait for two seconds - TODO - NEEDED?
+//      while (time - Timer::GetFPGATimestamp() > 2)
+//      {
+//         // use the camera for tracking, if enabled
+//         // Note: also keeps the shooter wheel running
+//         runShooterControl(VELOCITY_TO_SHOOTING_POSITION_MID);
+//      }
+
+      // shoot 2 balls
+      shootTwoBalls(VELOCITY_TO_SHOOTING_POSITION_MID);
       break;
+   }
 
    case 7:
    {
-      //Drive to shooting position then shoot.
-      // Drive Dump Balls Center Bridge Drive Forward and Shoot Balls
-      float distanceToDrive = (m_frontUltra->GetRangeInches() - 12.0)/12.0;
-      //float distanceToDrive = 10.0f;
-      /****** Hacked test code *******/
-      m_shooterWheel->ChangeControlMode(CANJaguar::kSpeed);
-      m_shooterWheel->SetPID(SHOOTER_VELOCITY_P, SHOOTER_VELOCITY_I, SHOOTER_VELOCITY_D);
-      m_shooterWheel->Set(HACKED_SHOOTER_SPEED);
-      m_shooterWheel->EnableControl();
-      m_shooterWheel->Set(HACKED_SHOOTER_SPEED);
-      /*******************************/
-      
-      printf("Distance to drive:%f\n", distanceToDrive);
-      
-      float startDistance = m_rightMotor->GetPosition();
-      driveToShootingPosition(distanceToDrive);
-      printf("Distance travled:%f\n", m_rightMotor->GetPosition()-startDistance);
-      time = Timer::GetFPGATimestamp();
-//      while (time - Timer::GetFPGATimestamp() > 2)
-//      {
-//         cameraControl();
-//      }
-      shootTwoBalls();
-      printf("Distance travled:%f\n", m_rightMotor->GetPosition()-startDistance);
       break;
-      // Test Auto
-      //      driveStraightForwardAndBackForDistance();
-      //      break;
    }
+
    default:
+   {
       // Do nothing if no auto mode is selected
       break;
    }
+   }
 }
 
-void MyRobot::driveToShootingPosition(float distance)
+void MyRobot::driveAndRunShooter(float distance, float speed, float defaultVelocity)
 {
    enum
    {
       DRIVING, DONE
    } autoState = DRIVING;
 
-   if (m_rightMotor->GetControlMode() == HVA_Victor::kPercentVbus)
+   // use the right motor to get the drive motor state
+   if (m_rightMotor->GetControlMode() != HVA_Victor::kVelocity)
    {
+      // use velocity mode to drive
       setDriveModeToVelocity();
    }
 
-   while (IsAutonomous() && autoState != DONE)
+   while (IsAutonomous() && (autoState != DONE))
    {
-      //cameraControl();
-      m_shooterWheel->Set(HACKED_SHOOTER_SPEED);
+      runShooterControl(defaultVelocity);
+
       switch (autoState)
       {
       case DRIVING:
-         if (m_robotDrive->DriveDistance(AUTO_MAX_SPEED,
-               distance, MAX_ACCELERATION_DISTANCE))
+         if (m_robotDrive->DriveDistance(speed, distance,
+               MAX_ACCELERATION_DISTANCE))
          {
             autoState = DONE;
          }
@@ -202,7 +290,7 @@ void MyRobot::driveStraightForwardAndBackForDistance()
    }
 }
 
-void MyRobot::shootOneBall()
+void MyRobot::shootOneBall(float defaultVelocity)
 {
    enum
    {
@@ -216,7 +304,8 @@ void MyRobot::shootOneBall()
       switch (autoState)
       {
       case AIMING:
-         if (cameraControl() || (Timer::GetFPGATimestamp() - time) > 2)
+         if (runShooterControl(defaultVelocity) || (Timer::GetFPGATimestamp()
+               - time) > 2)
          {
             autoState = SHOOT_FIRST_BALL;
             m_ballLiftSolenoid->Set(DoubleSolenoid::kForward);
@@ -225,7 +314,7 @@ void MyRobot::shootOneBall()
          break;
 
       case SHOOT_FIRST_BALL:
-         cameraControl();
+         runShooterControl(defaultVelocity);
          if ((Timer::GetFPGATimestamp() - time) > 1)
          {
             autoState = DONE;
@@ -239,7 +328,7 @@ void MyRobot::shootOneBall()
    }
 }
 
-void MyRobot::shootTwoBalls()
+void MyRobot::shootTwoBalls(float defaultVelocity)
 {
    enum
    {
@@ -255,10 +344,9 @@ void MyRobot::shootTwoBalls()
       switch (autoState)
       {
       case AIMING:
-         //if (cameraControl() || (Timer::GetFPGATimestamp() - time) > 2)
-         if(true)
+         if (runShooterControl(defaultVelocity) || (Timer::GetFPGATimestamp()
+               - time) > 2)
          {
-            m_shooterWheel->Set(HACKED_SHOOTER_SPEED);
             autoState = SHOOT_FIRST_BALL;
             m_ballLiftSolenoid->Set(DoubleSolenoid::kForward);
             time = Timer::GetFPGATimestamp();
@@ -266,8 +354,7 @@ void MyRobot::shootTwoBalls()
          break;
 
       case SHOOT_FIRST_BALL:
-         m_shooterWheel->Set(HACKED_SHOOTER_SPEED);
-         //cameraControl();
+         runShooterControl(defaultVelocity);
          if ((Timer::GetFPGATimestamp() - time) > 1)
          {
             autoState = ROTATE_FERRIS;
@@ -278,8 +365,7 @@ void MyRobot::shootTwoBalls()
          break;
 
       case ROTATE_FERRIS:
-         m_shooterWheel->Set(HACKED_SHOOTER_SPEED);
-         //cameraControl();
+         runShooterControl(defaultVelocity);
          //if (m_ferrisWheelStop->Get() == true && previousFerris == false)
          if (Timer::GetFPGATimestamp() - time > 1)
          {
@@ -291,8 +377,7 @@ void MyRobot::shootTwoBalls()
          break;
 
       case SHOOT_SECOND_BALL:
-         m_shooterWheel->Set(HACKED_SHOOTER_SPEED);
-         //cameraControl();
+         runShooterControl(defaultVelocity);
          if ((Timer::GetFPGATimestamp() - time) > 3)
          {
             autoState = DONE;
@@ -309,655 +394,77 @@ void MyRobot::shootTwoBalls()
       }
    }
 }
-void MyRobot::driveAndShootTwo()
-{
-   enum
-   {
-      kBackward, kStop
-   } driveState = kBackward;
-   enum
-   {
-      AIMING, SHOOT_FIRST_BALL, ROTATE_FERRIS, SHOOT_SECOND_BALL, DONE
-   } shootState = AIMING;
-
-   if (m_rightMotor->GetControlMode() == HVA_Victor::kPercentVbus)
-   {
-      setDriveModeToVelocity();
-   }
-
-   double time;
-   bool previousFerris = m_ferrisWheelStop->Get();
-
-   while (IsAutonomous())
-   {
-      switch (driveState)
-      {
-      case kBackward:
-         if (m_robotDrive->DriveDistance(.05, -10.0, MAX_ACCELERATION_DISTANCE))
-         {
-            driveState = kStop;
-         }
-         break;
-
-      case kStop:
-         m_robotDrive->ArcadeVelocityDriveStepped(0, 0, MAX_ACCELERATION_ARCADE);
-         break;
-      }
-
-      switch (shootState)
-      {
-      case AIMING:
-         if (cameraControl())
-         {
-            shootState = SHOOT_FIRST_BALL;
-            m_ballLiftSolenoid->Set(DoubleSolenoid::kForward);
-            time = Timer::GetFPGATimestamp();
-         }
-         break;
-
-      case SHOOT_FIRST_BALL:
-         cameraControl();
-         if ((Timer::GetFPGATimestamp() - time) > 1)
-         {
-            shootState = ROTATE_FERRIS;
-            m_ballLiftSolenoid->Set(DoubleSolenoid::kReverse);
-            m_ferrisWheel->Set(FERRIS_ROTATE_SPEED);
-         }
-         break;
-
-      case ROTATE_FERRIS:
-         cameraControl();
-
-         if (m_ferrisWheelStop->Get() == true && previousFerris == false)
-         {
-            m_ferrisWheel->Set(0.0);
-            shootState = SHOOT_SECOND_BALL;
-            time = Timer::GetFPGATimestamp();
-         }
-         previousFerris = m_ferrisWheelStop->Get();
-         break;
-
-      case SHOOT_SECOND_BALL:
-         cameraControl();
-
-         if ((Timer::GetFPGATimestamp() - time) > 2)
-         {
-            shootState = DONE;
-            m_ballLiftSolenoid->Set(DoubleSolenoid::kReverse);
-         }
-         else if ((Timer::GetFPGATimestamp() - time) > 1)
-         {
-            m_ballLiftSolenoid->Set(DoubleSolenoid::kForward);
-         }
-         break;
-
-      case DONE:
-         break;
-      }
-   }
-}
 
 /**
  * Dump the bridge
  */
-void MyRobot::dumpBridge()
+void MyRobot::dumpBridge(float timeToHoldDownBridge,
+      float defaultShooterVelocity)
 {
+   enum
+   {
+      kBaseMoving, kPusherDown, kPusherMoving, DONE
+   } autoState = kBaseMoving;
    double time = Timer::GetFPGATimestamp();
 
-   // Lower Stability wheel
-   //runStabilityWheels(kBackDeployed);
-
-   while ((Timer::GetFPGATimestamp() - time) < TIME_TO_DUMP_BRIDGE)
-   {
-   }
-
-   // Raise Stability wheel
-   //runStabilityWheels(kNeitherDeployed);
-}
-
-/**
- * Drive to the center bridge
- */
-void MyRobot::driveToCenterBridge()
-{
-   enum
-   {
-      DRIVING, DONE
-   } autoState = DRIVING;
-
-   if (m_rightMotor->GetControlMode() == HVA_Victor::kPercentVbus)
-   {
-      setDriveModeToVelocity();
-   }
-
+   // While the autonomous loop is running
    while (IsAutonomous() && autoState != DONE)
    {
-      /************************ Run Stability Wheels *****************************/
+      // Run the shooter so that the robot will be ready to shoot
+      runShooterControl(defaultShooterVelocity);
+
       switch (autoState)
       {
-      case DRIVING:
-         if (m_robotDrive->DriveDistance(AUTO_MAX_SPEED,
-               -DISTANCE_TO_CENTER_BRIDGE, MAX_ACCELERATION_DISTANCE))
+      case kBaseMoving:
+         printf("kBaseMoving\n");
+         
+         // Extend the ramp extender
+         if (m_rampExtender->Get() != DoubleSolenoid::kForward)
+            m_rampExtender->Set(DoubleSolenoid::kForward);
+
+         // Wait for the piston to finish moving before going to the next state
+         if ((Timer::GetFPGATimestamp() - time) >= TIME_FOR_PISTON_TO_MOVE)
          {
+            time = Timer::GetFPGATimestamp();
+            autoState = kPusherDown;
+         }
+         break;
+
+      case kPusherDown:
+         printf("kPusherDown\n");
+         // Extend the pusher
+         if (m_rampPusher->Get() != DoubleSolenoid::kForward)
+            m_rampPusher->Set(DoubleSolenoid::kForward);
+
+         // Wait for the time that the bridge should be held for
+         if ((Timer::GetFPGATimestamp() - time) >= timeToHoldDownBridge)
+         {
+            time = Timer::GetFPGATimestamp();
+            autoState = kPusherMoving;
+         }
+         break;
+
+      case kPusherMoving:
+         printf("kPusherMoving\n");
+         // Retrack the pusher
+         if (m_rampPusher->Get() != DoubleSolenoid::kReverse)
+            m_rampPusher->Set(DoubleSolenoid::kReverse);
+
+         // Wait for the piston to finish moving before going to the next state
+         if ((Timer::GetFPGATimestamp() - time) >= TIME_FOR_PISTON_TO_MOVE)
+         {
+            // Retract the extender
+            if (m_rampExtender->Get() != DoubleSolenoid::kReverse)
+               m_rampExtender->Set(DoubleSolenoid::kReverse);
+
+            // Finished with the pusher move
             autoState = DONE;
          }
          break;
 
-      case DONE:
-         m_robotDrive->ArcadeVelocityDriveStepped(0, 0, MAX_ACCELERATION_ARCADE);
-         break;
-      }
-   }
-}
-
-/**
- * Drive From the center bridge
- */
-void MyRobot::driveFromCenterBridge()
-{
-   enum
-   {
-      DRIVING, DONE
-   } autoState = DRIVING;
-
-   if (m_rightMotor->GetControlMode() == HVA_Victor::kPercentVbus)
-   {
-      setDriveModeToVelocity();
-   }
-
-   while (IsAutonomous() && autoState != DONE)
-   {
-      /************************ Run Stability Wheels *****************************/
-      switch (autoState)
-      {
-      case DRIVING:
-         if (m_robotDrive->DriveDistance(AUTO_MAX_SPEED,
-               DISTANCE_TO_CENTER_BRIDGE, MAX_ACCELERATION_DISTANCE))
-         {
-            autoState = DONE;
-         }
-         break;
-
-      case DONE:
-         m_robotDrive->ArcadeVelocityDriveStepped(0, 0, MAX_ACCELERATION_ARCADE);
-         break;
-      }
-   }
-}
-
-/**
- * Drive to the center bridge
- */
-void MyRobot::driveToAllianceBridge()
-{
-   enum
-   {
-      DRIVING, DONE
-   } autoState = DRIVING;
-
-   if (m_rightMotor->GetControlMode() == HVA_Victor::kPercentVbus)
-   {
-      setDriveModeToVelocity();
-   }
-
-   while (IsAutonomous() && autoState != DONE)
-   {
-      /************************ Run Stability Wheels *****************************/
-      switch (autoState)
-      {
-      case DRIVING:
-         if (m_robotDrive->DriveDistance(AUTO_MAX_SPEED,
-               -DISTANCE_TO_ALLIANCE_BRIDGE, MAX_ACCELERATION_DISTANCE))
-         {
-            autoState = DONE;
-         }
-         break;
-
-      case DONE:
-         m_robotDrive->ArcadeVelocityDriveStepped(0, 0, MAX_ACCELERATION_ARCADE);
-         break;
-      }
-   }
-}
-
-/**
- * Drive From the center bridge
- */
-void MyRobot::driveFromAllianceBridge()
-{
-   enum
-   {
-      DRIVING, DONE
-   } autoState = DRIVING;
-
-   if (m_rightMotor->GetControlMode() == HVA_Victor::kPercentVbus)
-   {
-      setDriveModeToVelocity();
-   }
-
-   while (IsAutonomous() && autoState != DONE)
-   {
-      /************************ Run Stability Wheels *****************************/
-      switch (autoState)
-      {
-      case DRIVING:
-         if (m_robotDrive->DriveDistance(AUTO_MAX_SPEED,
-               DISTANCE_TO_ALLIANCE_BRIDGE, MAX_ACCELERATION_DISTANCE))
-         {
-            autoState = DONE;
-         }
-         break;
-
-      case DONE:
-         m_robotDrive->ArcadeVelocityDriveStepped(0, 0, MAX_ACCELERATION_ARCADE);
-         break;
-      }
-   }
-}
-
-/*****************************************************************************/
-/*                           Control Defines                                 */
-/*****************************************************************************/
-
-// defines that need to be converted to time
-#define DRIVE_CORRECTION_BALANCE_TIME          0.10
-
-// state machine defines
-#define MINIMUM_GRYO_ANGLE_FOR_ON_RAMP         14.0
-#define RAMP_FALL_THRESHOLD                    1.0
-#define RAMP_ALMOST_BALANCED_THRESHOLD         2.0
-#define RAMP_BALANCED_THRESHOLD                6.0
-
-// motor power drive defines
-#define DRIVE_STOP_MOTOR_POWER                 0.0
-#define DRIVE_TO_RAMP_MOTOR_POWER              0.1
-#define DRIVE_UP_RAMP_MOTOR_POWER              0.075
-
-#define DRIVE_CORRECT_MOMENTOM_MOTOR_POWER     0.015
-#define DRIVE_CORRECT_RAMP_ANGLE_MOTOR_POWER   0.01
-
-// angular velocity control parameters
-#define DRIVE_MOMENTOM_OFFSET_MOTOR_POWER     -0.50
-#define ANGULAR_PROPOTIONAL_GAIN               0.0
-#define ANGULAR_VELOCITY_TARGET               -1.0
-
-/*****************************************************************************/
-// Routine Definition:
-//
-//    void RobotDemo::Balance()
-//
-// Description:
-//
-//    Routine to control the robot motor for balancing on the ramp based on
-// the gyro angle and state.
-//
-// State Machine (MP -> Motor Power):
-//
-//    Note: Assume the gyro has been reset to zero and robot is not on the
-//          ramp.
-//
-//  MP = DRIVE_TO_RAMP_MOTOR_POWER              MP = DRIVE_UP_RAMP_MOTOR_POWER
-//      +------+                                               +---------+
-//      |      |                                               |         |
-//      V      |                                               V         |
-//   +-------------+  Gyro > MINIMUM_ANGLE_FOR_ON_RAMP      +---------------+
-//   | BEFORE_RAMP |--------------------------------------->| DRIVE_UP_RAMP |
-//   +-------------+                                        +---------------+
-//                    Gyro < (maxGyro - RAMP_FALL_THRESHOLD)        |
-// +----------------------------------------------------------------+
-// |
-// |  Control ramp angular velocity
-// |     +------+
-// |     |      |
-// |     V      |
-// |  +-------------+ Gyro < RAMP_ALMOST_BALANCED_THRESHOLD +----------------+
-// +->| RAMP_MOVING |-------------------------------------->|RAMP_HORIZONTAL |
-//    +-------------+                                       +----------------+
-//
-//    In the RAMP_MOVING state, the control system adjusts the robot position
-// to control the ramp angular velocity. The control system is a simple P
-// controller with an offset.
-//
-//       MP = Proportional Gain * (Setpoint - Present) + Motor Offset
-//
-//    In the RAMP_HORIZONTAL state,
-//
-// System Inputs:
-//
-//    Vertical Gyro angle.
-//
-// System Outputs:
-//
-//    Motor Power (-1.0 to 1.0).
-//
-// History:
-//
-//    1/14/12 JWY - First version of routine.
-//    1/16/12 ARY - Ported code to the robot.
-/*****************************************************************************/
-void MyRobot::balance()
-{
-   //   if (driveSetting != HVA_Victor::kVelocity)
-   //   {
-   //      setDriveModeToVelocity();
-   //   }
-   //
-   //   printf("Time, Gyro Angle, Angular Velocity, Drive Power, State\n");
-   //
-   //   // Variables for balancing
-   //   float maxGyro = 0.0f; // The max angle recorded by the gyro
-   //   float previousGryo = 0.0f; // The previously recorded Gyro angle.
-   //   double previousTime = 0.0;
-   //   Timer driveTimer; // Timer to drive by.
-   //   Timer balenceTimer; //Timer to see how long the robot has been balancing
-   //   float printTime = 0.0;
-   //
-   //   balenceTimer.Reset();
-   //   balenceTimer.Start();
-   //
-   //   // Enumeration to record the current state of the robot.
-   //   enum
-   //   {
-   //      BEFORE_RAMP, DRIVE_UP_RAMP, RAMP_MOVING, RAMP_HORIZONTAL
-   //   } rampState = BEFORE_RAMP;
-   //
-   //   // Inputs and Outputs
-   //   float gyro;
-   //   float angularVelocity;
-   //   float drivePower = 0.0f;
-   //
-   //   // Reset the gyro position to 0
-   //   m_gyroVertical->Reset();
-   //
-   //   while (IsAutonomous())
-   //   {
-   //      stabilityWheelState = (StabilityWheelState)getStabilityStateFromGyro();
-   //      runStabilityWheels();
-   //
-   //      // read the gyro
-   //      gyro = -m_gyroVertical->GetAngle();
-   //
-   //      // assume the gyro will be increasing as the robot starts up the ramp
-   //      // want to find the "maximum" value
-   //      if (gyro > maxGyro)
-   //         maxGyro = gyro;
-   //
-   //      // determine the angular velocity
-   //      if (gyro != previousGryo)
-   //      {
-   //         angularVelocity = (gyro - previousGryo) / (balenceTimer.Get() - previousTime);
-   //         previousTime = balenceTimer.Get();
-   //      }
-   //
-   //      //    angularVelocity = gyro - previousGryo;
-   //
-   //      // remember the gyro setting
-   //      previousGryo = gyro;
-   //
-   //
-   //      // determine the ramp balance state
-   //      switch (rampState)
-   //      {
-   //      case BEFORE_RAMP:
-   //         // ensure the robot is well on the ramp (gyro is greater than some ramp angle)
-   //         if (maxGyro > MINIMUM_GYRO_ANGLE_FOR_ON_RAMP)
-   //         {
-   //            // driving up the ramp
-   //            rampState = DRIVE_UP_RAMP;
-   //
-   //            // drive up the ramp (need to drive slowly)
-   //            drivePower = DRIVE_UP_RAMP_MOTOR_POWER;
-   //         }
-   //         else
-   //         {
-   //            // keep driving up the ramp
-   //            drivePower = DRIVE_TO_RAMP_MOTOR_POWER;
-   //         }
-   //         break;
-   //
-   //      case DRIVE_UP_RAMP:
-   //         // determine if the ramp has started back towards horizontal
-   //         if (gyro < (maxGyro - RAMP_FALL_THRESHOLD))
-   //         {
-   //            // ramp is starting to fall (to horizontal)
-   //            rampState = RAMP_MOVING;
-   //            drivePower = DRIVE_STOP_MOTOR_POWER;
-   //         }
-   //         else
-   //         {
-   //            // drive up the ramp (need to drive slowly)
-   //            drivePower = DRIVE_UP_RAMP_MOTOR_POWER;
-   //         }
-   //         break;
-   //
-   //      case RAMP_MOVING:
-   //         // determine if the ramp is almost back to horizontal
-   //         if (gyro < RAMP_ALMOST_BALANCED_THRESHOLD)
-   //         {
-   //            // ramp is close to horizontal, so quite going backwards and drive forward
-   //            drivePower = 0.0;
-   //            rampState = RAMP_HORIZONTAL;
-   //
-   //            // start drive forward timer
-   //            driveTimer.Reset();
-   //            driveTimer.Start();
-   //         }
-   //
-   //         // ramp is still falling towards horizontal
-   //         else
-   //         {
-   //            // drive backwards starting when the ramp starts to fall based on the
-   //            // angular velocity
-   ////            drivePower = (ANGULAR_PROPORTIONAL_GAIN
-   ////                  * (ANGULAR_VELOCITY_TARGET - angularVelocity))
-   ////                  + DRIVE_MOMENTUM_OFFSET_MOTOR_POWER;
-   //            drivePower = -.015;
-   //         }
-   //         break;
-   //
-   //      case RAMP_HORIZONTAL:
-   //         // drive forwards to go back to the center of gravity
-   //         if (driveTimer.Get() <= DRIVE_CORRECTION_BALANCE_TIME)
-   //         {
-   //            // drive forwards
-   //            drivePower = DRIVE_CORRECT_MOMENTUM_MOTOR_POWER;
-   //         }
-   //
-   //         // done driving forward to correct drive back offset
-   //         else if (gyro > RAMP_BALANCED_THRESHOLD)
-   //         {
-   //            // drive robot back to slow down ramp fall
-   //            drivePower = DRIVE_CORRECT_RAMP_ANGLE_MOTOR_POWER;
-   //         }
-   //
-   //         else if ((gyro < -RAMP_BALANCED_THRESHOLD))
-   //         {
-   //            // drive robot back to slow down ramp fall
-   //            drivePower = -DRIVE_CORRECT_RAMP_ANGLE_MOTOR_POWER;
-   //         }
-   //         break;
-   //      }
-   //
-   //      // print the gyro value
-   //      if (printTime + .10 < balenceTimer.Get())
-   //      {
-   //         printf("%3f, %6.2f, %6.2f, %6.2f, %d\n", balenceTimer.Get(), gyro,
-   //               angularVelocity, drivePower, rampState);
-   //         printTime = balenceTimer.Get();
-   //      }
-   //      m_rightMotor->Set(drivePower * MAX_SPEED_VELOCITY);
-   //      m_leftMotor->Set(drivePower * MAX_SPEED_VELOCITY);
-   //   }
-   //   delete (&driveTimer);
-   //   delete (&balenceTimer);
-}
-
-void MyRobot::newBalance()
-{
-   if (m_rightMotor->GetControlMode() == HVA_Victor::kPercentVbus)
-   {
-      setDriveModeToVelocity();
-   }
-
-   printf("Time, Gyro Angle, Angular Velocity, Drive Power, State\n");
-
-   // Variables for balancing
-   float maxGyro = 0.0f; // The max angle recorded by the gyro
-   float previousGryo = 0.0f; // The previously recorded Gyro angle.
-   double previousTime = 0.0;
-   Timer driveTimer; // Timer to drive by.
-   Timer balenceTimer; //Timer to see how long the robot has been balancing
-   float printTime = 0.0;
-
-   balenceTimer.Reset();
-   balenceTimer.Start();
-
-   // Enumeration to record the current state of the robot.
-   enum
-   {
-      BEFORE_RAMP, DRIVE_UP_RAMP, RAMP_MOVING, RAMP_HORIZONTAL, DONE
-   } rampState = BEFORE_RAMP;
-
-   // Inputs and Outputs
-   float gyro;
-   float angularVelocity;
-   float drivePower = 0.0f;
-
-   // Reset the gyro position to 0
-   m_gyroVertical->Reset();
-
-   while (IsAutonomous())
-   {
-      //runStabilityWheels((StabilityWheelState)getStabilityStateFromGyro());
-
-      // read the gyro
-      gyro = -m_gyroVertical->GetAngle();
-
-      // assume the gyro will be increasing as the robot starts up the ramp
-      // want to find the "maximum" value
-      if (gyro > maxGyro)
-         maxGyro = gyro;
-
-      // determine the angular velocity
-      if (gyro != previousGryo)
-      {
-         angularVelocity = (gyro - previousGryo) / (balenceTimer.Get()
-               - previousTime);
-         previousTime = balenceTimer.Get();
-      }
-
-      //    angularVelocity = gyro - previousGryo;
-
-      // remember the gyro setting
-      previousGryo = gyro;
-
-      // determine the ramp balance state
-      switch (rampState)
-      {
-      case BEFORE_RAMP:
-         // ensure the robot is well on the ramp (gyro is greater than some ramp angle)
-         if (maxGyro > MINIMUM_GRYO_ANGLE_FOR_ON_RAMP)
-         {
-            // driving up the ramp
-            rampState = DRIVE_UP_RAMP;
-
-            // drive up the ramp (need to drive slowly)
-            drivePower = DRIVE_UP_RAMP_MOTOR_POWER;
-         }
-         else
-         {
-            // keep driving up the ramp
-            drivePower = DRIVE_TO_RAMP_MOTOR_POWER;
-         }
-         break;
-
-      case DONE:
-         drivePower = DRIVE_STOP_MOTOR_POWER;
-         break;
-
-      case DRIVE_UP_RAMP:
-         // determine if the ramp has started back towards horizontal
-         if (gyro < (maxGyro - RAMP_FALL_THRESHOLD))
-         {
-            // ramp is starting to fall (to horizontal)
-            rampState = RAMP_MOVING;
-            drivePower = DRIVE_STOP_MOTOR_POWER;
-         }
-         else
-         {
-            // drive up the ramp (need to drive slowly)
-            drivePower = DRIVE_UP_RAMP_MOTOR_POWER;
-         }
-         break;
-
-      case RAMP_MOVING:
-         // determine if the ramp is almost back to horizontal
-         if (gyro < RAMP_ALMOST_BALANCED_THRESHOLD)
-         {
-            // ramp is close to horizontal, so quite going backwards and drive forward
-            drivePower = 0.0;
-            rampState = RAMP_HORIZONTAL;
-
-            // start drive forward timer
-            driveTimer.Reset();
-            driveTimer.Start();
-         }
-
-         // ramp is still falling towards horizontal
-         else
-         {
-            // drive backwards starting when the ramp starts to fall based on the
-            // angular velocity
-            //            drivePower = (ANGULAR_PROPORTIONAL_GAIN
-            //                  * (ANGULAR_VELOCITY_TARGET - angularVelocity))
-            //                  + DRIVE_MOMENTUM_OFFSET_MOTOR_POWER;
-            drivePower = -.015;
-         }
-         break;
-
-      case RAMP_HORIZONTAL:
-         // drive forwards to go back to the center of gravity
-         if (driveTimer.Get() <= DRIVE_CORRECTION_BALANCE_TIME)
-         {
-            // drive forwards
-            drivePower = DRIVE_CORRECT_MOMENTOM_MOTOR_POWER;
-         }
-
-         // done driving forward to correct drive back offset
-         else if (gyro > RAMP_BALANCED_THRESHOLD)
-         {
-            while (m_robotDrive->DriveDistance(.01, .057,
-                  MAX_ACCELERATION_DISTANCE) == false)
-            {
-               //runStabilityWheels((StabilityWheelState) getStabilityStateFromGyro());
-            }
-            rampState = DONE;
-         }
-
-         else if ((gyro < -RAMP_BALANCED_THRESHOLD))
-         {
-            while (m_robotDrive->DriveDistance(.01, -.057,
-                  MAX_ACCELERATION_DISTANCE) == false)
-            {
-               //runStabilityWheels((StabilityWheelState) getStabilityStateFromGyro());
-            }
-            rampState = DONE;
-
-         }
+      default:
          break;
       }
 
-      // print the gyro value
-      if (printTime + .10 < balenceTimer.Get())
-      {
-         printf("%3f, %6.2f, %6.2f, %6.2f, %d\n", balenceTimer.Get(), gyro,
-               angularVelocity, drivePower, rampState);
-         printTime = balenceTimer.Get();
-      }
-
-      m_rightMotor->Set(drivePower * MAX_VELOCITY);
-      m_leftMotor->Set(drivePower * MAX_VELOCITY);
    }
-   delete (&driveTimer);
-   delete (&balenceTimer);
 }

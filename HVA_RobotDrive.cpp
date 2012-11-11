@@ -1,18 +1,9 @@
 #include "WPILib.h"
 #include "HVA_RobotDrive.h"
 
-/*************************** Local Defines ***************************************/
-
-#define RAMP_FALL_THRESHOLD                 3.0
-
-#define BRIDGE_TILTED_ANGLE_CHECK          12.0
-
-#define ONE_INCH                           (1.0 / 12.0)
-
-#define BRIDGE_TILT_CORRECTION_DISTANCE    (ONE_INCH * 2)
-
-/*********************************************************************************/
-
+/**
+ *
+ */
 HVA_RobotDrive::HVA_RobotDrive(UINT32 leftMotorChannel,
       UINT32 rightMotorChannel) :
    RobotDrive(leftMotorChannel, rightMotorChannel)
@@ -20,6 +11,9 @@ HVA_RobotDrive::HVA_RobotDrive(UINT32 leftMotorChannel,
 
 }
 
+/**
+ *
+ */
 HVA_RobotDrive::HVA_RobotDrive(UINT32 frontLeftMotor, UINT32 rearLeftMotor,
       UINT32 frontRightMotor, UINT32 rearRightMotor) :
    RobotDrive(frontLeftMotor, rearLeftMotor, frontRightMotor, rearRightMotor)
@@ -27,6 +21,9 @@ HVA_RobotDrive::HVA_RobotDrive(UINT32 frontLeftMotor, UINT32 rearLeftMotor,
 
 }
 
+/**
+ *
+ */
 HVA_RobotDrive::HVA_RobotDrive(SpeedController *leftMotor,
       SpeedController *rightMotor) :
    RobotDrive(leftMotor, rightMotor)
@@ -34,6 +31,9 @@ HVA_RobotDrive::HVA_RobotDrive(SpeedController *leftMotor,
 
 }
 
+/**
+ *
+ */
 HVA_RobotDrive::HVA_RobotDrive(SpeedController &leftMotor,
       SpeedController &rightMotor) :
    RobotDrive(leftMotor, rightMotor)
@@ -41,6 +41,9 @@ HVA_RobotDrive::HVA_RobotDrive(SpeedController &leftMotor,
 
 }
 
+/**
+ *
+ */
 HVA_RobotDrive::HVA_RobotDrive(SpeedController *frontLeftMotor,
       SpeedController *rearLeftMotor, SpeedController *frontRightMotor,
       SpeedController *rearRightMotor) :
@@ -49,12 +52,20 @@ HVA_RobotDrive::HVA_RobotDrive(SpeedController *frontLeftMotor,
 
 }
 
+/**
+ *
+ */
 HVA_RobotDrive::HVA_RobotDrive(SpeedController &frontLeftMotor,
       SpeedController &rearLeftMotor, SpeedController &frontRightMotor,
       SpeedController &rearRightMotor) :
    RobotDrive(frontLeftMotor, rearLeftMotor, frontRightMotor, rearRightMotor)
 {
 
+}
+
+float HVA_RobotDrive::GetMaxOutput()
+{
+   return m_maxOutput;
 }
 
 /**
@@ -116,18 +127,6 @@ bool HVA_RobotDrive::DriveDistance(float maxSpeed, float distance,
          stopping = true;
       }
 
-      // Time
-      printf("%f",Timer::GetFPGATimestamp());
-      
-      // Stopping distance
-      printf("\t%f", stoppingDistance);
-
-      //distance to target
-      printf(
-            "\t%f",
-            (distance - (((HVA_Victor*) m_rearRightMotor)->GetPosition()
-                  - startDistanceRight)));
-
       // depending on the stage find velocity differently
       if (stopping == false)
       {
@@ -160,21 +159,6 @@ bool HVA_RobotDrive::DriveDistance(float maxSpeed, float distance,
             distanceRunning = false;
          }
       }
-      
-      static float previousDistance = ((HVA_Victor*) m_rearRightMotor)->GetPosition();
-      static float previousTime = Timer::GetFPGATimestamp();
-
-      // new calc for velocity
-      printf("\t%f", ((((HVA_Victor*) m_rearRightMotor)->GetPosition() - previousDistance)/(Timer::GetFPGATimestamp()-previousTime)));
-      previousDistance = ((HVA_Victor*) m_rearRightMotor)->GetPosition();
-      previousTime= Timer::GetFPGATimestamp();
-      // Current velocity
-      printf(
-            "\t%f",
-            ((HVA_Victor*) m_rearRightMotor)->GetSpeed());
-
-      // Velocity setpoint
-      printf("\t%f\n", motorOutputVelocity * m_maxOutput);
 
       // set the motor velocities
       SetLeftRightMotorOutputs(-motorOutputVelocity, -motorOutputVelocity);
@@ -184,8 +168,8 @@ bool HVA_RobotDrive::DriveDistance(float maxSpeed, float distance,
    else
    {
       // Calculate the stopping distance
-      stoppingDistance = -(pow(motorOutputVelocity * (m_maxOutput / 60), 2)
-            / (2 * maxAcceleration * (m_maxOutput / 60)));
+      stoppingDistance = -(pow(motorOutputVelocity * (m_maxOutput), 2)
+            / (2 * maxAcceleration * (m_maxOutput)));
 
       // Start stopping if stopping distance is greater than distance left
       if (stoppingDistance <= (distance
@@ -234,259 +218,6 @@ bool HVA_RobotDrive::DriveDistance(float maxSpeed, float distance,
    else
    {
       return true;
-   }
-}
-
-/**
- * Initialize the balance on bridge variables
- */
-void HVA_RobotDrive::InitializeBalanceOnBridge(Gyro *gyro)
-{
-   // set the balance state
-   m_balancingState = INITIAL_BRIDGE_STATE;
-
-   m_maxGyro = 0.0; // The max angle recorded by the gyro
-   m_minGyro = 0.0; // The min angle recorded by the gyro
-   m_previousGryo = 0.0; // The previously recorded Gyro angle
-
-   // reset the gyro
-   gyro->Reset();
-}
-
-/**
- * Routine to balance on the bridge using velocity and position drive modes
- */
-void HVA_RobotDrive::BalanceOnBridge(float maxVelocity, Gyro *gyro,
-      float positionDelta)
-{
-   static float rearRightPosition;
-   static float rearLeftPosition;
-   static float previousGryo;
-   static double angularVelocityTime;
-   static double startBalanceTime;
-   static double debugTime;
-
-   float angularVelocity;
-
-   // get the gyro angle
-   float gyroAngle = -gyro->GetAngle();
-
-   // assume the gyro will be increasing as the robot starts up the ramp
-   // want to find the "maximum" value
-   if (gyroAngle > m_maxGyro)
-      m_maxGyro = gyroAngle;
-   if (gyroAngle < m_minGyro)
-      m_minGyro = gyroAngle;
-
-   // determine if in the routine the first time after initialization to setup
-   // the initial time values
-   if (m_balancingState == INITIAL_BRIDGE_STATE)
-   {
-      // set the angular velocity, start balance and debug times
-      angularVelocityTime = startBalanceTime = debugTime
-            = Timer::GetFPGATimestamp();
-
-      // show the debug header
-      printf(
-            "Time\tState\tGyro Angle\tMin Angle\tMax Angle\tAngular Velocity\tDrive Speed\tDrive Position\tSetpoint\n");
-   }
-   else
-   {
-      // determine if the gyro angle has changed
-      if (gyroAngle != previousGryo)
-      {
-         // determine the angular velocity
-         angularVelocity = (gyroAngle - previousGryo)
-               / (Timer::GetFPGATimestamp() - angularVelocityTime);
-
-         // remember the new gyro angular velocity calculation time
-         angularVelocityTime = Timer::GetFPGATimestamp();
-      }
-   }
-
-   // remember the gyro setting
-   previousGryo = gyroAngle;
-
-   // determine the bridge state
-   switch (m_balancingState)
-   {
-   case INITIAL_BRIDGE_STATE:
-   {
-      /***************** INITIAL TESTING *************************************/
-      //         m_balancingState = POSITION_CONTROL_ON_BRIDGE;
-      //
-      //         // get the present location
-      //         rearRightPosition = ((HVA_Victor*) m_rearRightMotor)->GetPosition();
-      //         rearLeftPosition  = ((HVA_Victor*) m_rearLeftMotor)->GetPosition();
-      //
-      //         // set drive to position mode
-      //         ((HVA_Victor*) m_rearRightMotor)->ChangeControlMode(HVA_Victor::kPosition);
-      //         ((HVA_Victor*) m_rearLeftMotor)->ChangeControlMode(HVA_Victor::kPosition);
-      //
-      //         // set the desired ending position
-      //         ((HVA_Victor*) m_rearRightMotor)->Set(rearRightPosition + BRIDGE_TILT_CORRECTION_DISTANCE);
-      //         ((HVA_Victor*) m_rearLeftMotor)->Set(rearLeftPosition + BRIDGE_TILT_CORRECTION_DISTANCE);
-      //
-      //         // enable the position mode
-      //         ((HVA_Victor*) m_rearRightMotor)->EnableControl();
-      //         ((HVA_Victor*) m_rearLeftMotor)->EnableControl();
-
-      /***********************************************************************/
-
-      // determine gyro angle to determine the drive direction
-      if (gyroAngle > BRIDGE_TILTED_ANGLE_CHECK)
-      {
-         // change state to driving forward on bridge
-         m_balancingState = DRIVING_FORWARD_ON_BRIDGE;
-
-         // drive forward on the bridge
-         SetLeftRightMotorOutputs(-maxVelocity, -maxVelocity);
-      }
-      else if (gyroAngle < -BRIDGE_TILTED_ANGLE_CHECK)
-      {
-         // change state to driving forward on bridge
-         m_balancingState = DRIVING_BACKWARD_ON_BRIDGE;
-
-         // drive forward on the bridge
-         SetLeftRightMotorOutputs(maxVelocity, maxVelocity);
-      }
-      else
-      {
-         // bridge is not in the down position so don't know how to balance
-         printf("Error: Bridge angle: %f\n", gyroAngle);
-      }
-
-      break;
-   }
-
-   case DRIVING_FORWARD_ON_BRIDGE:
-   {
-      // determine if the ramp has started back towards horizontal
-      if (gyroAngle < (m_maxGyro - RAMP_FALL_THRESHOLD))
-      {
-         // change state to driving forward on bridge
-         m_balancingState = POSITION_CONTROL_ON_BRIDGE;
-
-         // get the present location
-         rearRightPosition = ((HVA_Victor*) m_rearRightMotor)->GetPosition();
-         rearLeftPosition = ((HVA_Victor*) m_rearLeftMotor)->GetPosition();
-
-         // set drive to position mode
-         ((HVA_Victor*) m_rearRightMotor)->ChangeControlMode(
-               HVA_Victor::kPosition);
-         ((HVA_Victor*) m_rearLeftMotor)->ChangeControlMode(
-               HVA_Victor::kPosition);
-
-         // set the desired ending position
-         ((HVA_Victor*) m_rearRightMotor)->Set(
-               rearRightPosition - BRIDGE_TILT_CORRECTION_DISTANCE);
-         ((HVA_Victor*) m_rearLeftMotor)->Set(
-               rearLeftPosition - BRIDGE_TILT_CORRECTION_DISTANCE);
-
-         // enable the position mode
-         ((HVA_Victor*) m_rearRightMotor)->EnableControl();
-         ((HVA_Victor*) m_rearLeftMotor)->EnableControl();
-      }
-      //         else
-      //         {
-      //            // drive forward on the bridge
-      //            // Note: Need to continue to call to keep the watchdog feed
-      //            SetLeftRightMotorOutputs(-maxVelocity, -maxVelocity);
-      //         }
-
-      break;
-   }
-
-   case DRIVING_BACKWARD_ON_BRIDGE:
-   {
-      // determine if bridge starts to tip
-      if (gyroAngle > (m_minGyro + RAMP_FALL_THRESHOLD))
-      {
-         // change state to driving forward on bridge
-         m_balancingState = POSITION_CONTROL_ON_BRIDGE;
-
-         // get the present location
-         rearRightPosition = ((HVA_Victor*) m_rearRightMotor)->GetPosition();
-         rearLeftPosition = ((HVA_Victor*) m_rearLeftMotor)->GetPosition();
-
-         // set drive to position mode
-         ((HVA_Victor*) m_rearRightMotor)->ChangeControlMode(
-               HVA_Victor::kPosition);
-         ((HVA_Victor*) m_rearLeftMotor)->ChangeControlMode(
-               HVA_Victor::kPosition);
-
-         // set the desired ending position
-         ((HVA_Victor*) m_rearRightMotor)->Set(
-               rearRightPosition + BRIDGE_TILT_CORRECTION_DISTANCE);
-         ((HVA_Victor*) m_rearLeftMotor)->Set(
-               rearLeftPosition + BRIDGE_TILT_CORRECTION_DISTANCE);
-
-         // enable the position mode
-         ((HVA_Victor*) m_rearRightMotor)->EnableControl();
-         ((HVA_Victor*) m_rearLeftMotor)->EnableControl();
-      }
-      //         else
-      //         {
-      //            // drive forward on the bridge
-      //            // Note: Need to continue to call to keep the watchdog feed
-      //            SetLeftRightMotorOutputs(maxVelocity, maxVelocity);
-      //         }
-
-      break;
-   }
-
-   case POSITION_CONTROL_ON_BRIDGE:
-   {
-      // Make sure the motors are in position mode
-      if (((HVA_Victor*) m_rearRightMotor)->GetControlMode()
-            != HVA_Victor::kPosition)
-      {
-         // set drive to position mode
-         ((HVA_Victor*) m_rearRightMotor)->ChangeControlMode(
-               HVA_Victor::kPosition);
-         ((HVA_Victor*) m_rearLeftMotor)->ChangeControlMode(
-               HVA_Victor::kPosition);
-
-         // set the desired ending position
-         ((HVA_Victor*) m_rearRightMotor)->Set(rearRightPosition);
-         ((HVA_Victor*) m_rearLeftMotor)->Set(rearRightPosition);
-
-         // enable the position mode
-         ((HVA_Victor*) m_rearRightMotor)->EnableControl();
-         ((HVA_Victor*) m_rearLeftMotor)->EnableControl();
-      }
-
-      // determine if the operator wants to change the bridge position
-      if (positionDelta != 0.0)
-      {
-         // change the desired bridge position
-         rearRightPosition += positionDelta;
-         rearLeftPosition += positionDelta;
-
-         // set the desired ending position
-         ((HVA_Victor*) m_rearRightMotor)->Set(rearRightPosition);
-         ((HVA_Victor*) m_rearLeftMotor)->Set(rearLeftPosition);
-      }
-
-      break;
-   }
-   }
-
-   // print out debug statement every quarter second
-   if (Timer::GetFPGATimestamp() - debugTime >= 0.0)
-   {
-      // reset the timer time
-      debugTime = Timer::GetFPGATimestamp();
-
-      // Time, State, Gyro Angle, Min Angle, Max Angle, Angular Velocity, Drive Speed, Drive Position
-      printf(
-            "%f\t%d\t%f\t%f\t%f\t%f\t%f\t%f\t%f\n",
-            //            printf("%f, %d, %f, %f, %f, %f, %f, %f, %f\n",
-            (float) (Timer::GetFPGATimestamp() - startBalanceTime),
-            m_balancingState, gyroAngle, m_minGyro, m_maxGyro, angularVelocity,
-            ((HVA_Victor*) m_rearRightMotor)->GetSpeed(),
-            ((HVA_Victor*) m_rearRightMotor)->GetPosition(),
-            ((HVA_Victor*) m_rearRightMotor)->Get());
    }
 }
 
@@ -595,6 +326,9 @@ void HVA_RobotDrive::ArcadeVelocityDriveStepped(float moveValue,
    SetLeftRightMotorOutputs(-leftMotorOutputVelocity, -rightMotorOutputVelocity);
 }
 
+/**
+ *
+ */
 void HVA_RobotDrive::ArcadeVelocityDriveStepped(float moveValue,
       float rotateValue, float maxForwardAcceleration,
       float maxRotationalAcceleration, bool squaredInputs)

@@ -22,25 +22,15 @@ public:
             SpeedController *frontRightMotor, SpeedController *rearRightMotor);
    HVA_RobotDrive(SpeedController &frontLeftMotor, SpeedController &rearLeftMotor,
             SpeedController &frontRightMotor, SpeedController &rearRightMotor);
+   
+   float GetMaxOutput();
 
    bool DriveDistance(float maxSpeed, float distance, float maxAcceleration);
-
-   void InitializeBalanceOnBridge(Gyro *gyro);
-   void BalanceOnBridge(float maxVelocity, Gyro *gyro, float positionDelta);
 
    void ArcadeVelocityDriveStepped(float moveValue, float rotateValue, float maxAcceleration, bool squaredInputs = true);
    void ArcadeVelocityDriveStepped(float moveValue, float rotateValue, float maxForwardAcceleration, float maxRotationalAcceleration, bool squaredInputs = true);
 
 private:
-enum
-   {
-      INITIAL_BRIDGE_STATE, DRIVING_FORWARD_ON_BRIDGE, DRIVING_BACKWARD_ON_BRIDGE,
-      POSITION_CONTROL_ON_BRIDGE
-   } m_balancingState;
-
-   float m_maxGyro;        // The max angle recorded by the gyro
-   float m_minGyro;        // The min angle recorded by the gyro
-   float m_previousGryo;   // The previously recorded Gyro angle.
 };
 
 #endif

@@ -88,10 +88,10 @@
 #define AUTO_SWITCH_2                              3
 
 /* Cypress Digital I/O Defines */
-#define STABILITY_SWITCH_UP                        1
-#define STABILITY_SWITCH_DOWN                      2
-#define STABILITY_SWITCH_FORWARD_OVERRIDE          3
-#define STABILITY_SWITCH_BACKWARD_OVERRIDE         4
+#define SHOOTER_VELOCITY_MODE                      1
+#define SHOOTER_VOLTAGE_MODE                       2
+#define RAMP_PUSHER                                3
+#define RAMP_EXTENDER                              4
 #define SHOOTER_WHEEL_OVERRIDE_MODE                5
 #define SHOOTER_WHEEL_OVERRIDE                     6
 #define ROTATION_OVERRIDE                          7
@@ -112,17 +112,25 @@
 #define MAX_ACCELERATION_DISTANCE                .25
 
 /************************** Power Defines *************************************/
-#define SHOOTER_ROTATE_SPEED                     0.4f
-#define FERRIS_ROTATE_SPEED                      0.5f
-#define MAX_VOLTAGE_PERCENT                      1.0
+#define MAX_ROBOT_VOLTAGE                       12.0
 #define MAX_VELOCITY                            12.0
+#define MAX_VOLTAGE_PERCENT                      1.0
+
+#define FERRIS_ROTATE_SPEED                      0.5f
+
 #define BALL_PICKUP_SPEED                        1.0f
+
 #define MIN_SHOOTER_SPEED_PERCENT                0.0f
 #define MAX_SHOOTER_SPEED_PERCENT                1.0f
-#define MAX_ROBOT_VOLTAGE                       12.0
-#define DEFAULT_AUTONOMOUS_VOLTAGE               7.0
-#define MIN_SHOOTER_VOLTAGE_AUTONOMOUS           6.0
-#define MAX_SHOOTER_VOLTAGE_AUTONOMOUS           7.75
+
+#define MIN_SHOOTER_SPEED_RPM                    0.0f
+#define MAX_SHOOTER_SPEED_RPM                 4000.0f
+
+#define DEFAULT_AUTONOMOUS_SHOOTER_VOLTAGE_KEY   7.0  // top goal at key
+#define DEFAULT_AUTONOMOUS_SHOOTER_VOLTAGE_LOW   4.6  // middle goal close range
+
+#define DEFAULT_AUTONOMOUS_SHOOTER_RPM_KEY     2200  // top goal at key
+#define DEFAULT_AUTONOMOUS_SHOOTER_RPM_LOW     1200  // middle goal close range
 
 /************************** PID Defines ***************************************/
 #define TURN_CONTROLLER_P                        0.02
@@ -140,12 +148,6 @@
 #define SHOOTER_VELOCITY_I                       0.01
 #define SHOOTER_VELOCITY_D                       0.0
 
-/*************************** Autonomous Defines ************************************/
-#define DISTANCE_TO_CENTER_BRIDGE           5
-#define DISTANCE_TO_ALLIANCE_BRIDGE         5
-#define TIME_TO_DUMP_BRIDGE                 2
-#define DISTANCE_TO_SHOOTING_POSITION       6.2
-
 /*************************** Other Defines ************************************/
 #define MAXIMUM_ROTATION_OF_SHOOTER              0.3
 #define MINIMUM_ROTATION_OF_SHOOTER         -MAXIMUM_ROTATION_OF_SHOOTER
@@ -155,12 +157,19 @@
 #define MID_POT_VALUE                       ((MAX_POT_VALUE + MIN_POT_VALUE) / 2.0)
 
 #define MAX_SHOOTER_VOLTAGE_ADJUSTMENT           1.0
+#define MAX_SHOOTER_VELOCITY_ADJUSTMENT        200.0
 
 #define TIME_TILL_INTERRUPT_ENABLE               0.5
 
 #define RAMP_PUSHER_DELAY                        1.0
 
 #define DISTANCE_TO_RAMP                         8
+
+// percent of rotation power (in decimal)
+#define ROTATE_REDUCE_FACTOR                     1.0
+
+#define DEFAULT_TIME_TO_HOLD_BRIDGE_DOWN         2.0
+#define DEFAULT_AUTO_SPEED                       0.2
 
 /******************************************************************************/
 
@@ -174,10 +183,9 @@ typedef enum {
    kHome, kPusherExtended, kPusherRetracted
 } RampState;
 
-enum ControlState
-{
-   kAutonomous, kTeleoperated
-};
+typedef enum {
+   kIgnore = 0, kInDeadband = 1, kOutDeadband = 2
+} JoystickState;
 
 class MyRobot: public SimpleRobot
 {
@@ -203,8 +211,12 @@ private:
       kForward, kBackward, kStop
    } m_ferrisState;
 
-   RampState    m_rampState;
-   ControlState m_shooterRotationControlState;
+   enum
+   {
+      INITIAL_BRIDGE_STATE,
+      DRIVING_FORWARD_ONTO_BRIDGE, DRIVING_BACKWARD_ONTO_BRIDGE,
+      DRIVING_FORWARD_ON_BRIDGE,   DRIVING_BACKWARD_ON_BRIDGE
+   } m_balancingState;
 
    DashboardDataFormat       *m_dashboardDataFormat; // object to send data to the Driver station
    HVA_Victor                *m_rightMotor; // Right drive motor
@@ -242,19 +254,17 @@ private:
    // Array to hold the targets from the camera
    double results[NUMBER_OF_TARGETS][NUMBER_OF_TARGET_PARAMETERS];
 
+   bool  m_runningAutonomous;
+   float m_rightPosition;
+   float m_leftPosition;
+
    /************************ Basic Robot Control ******************************/
-   // Read the buttons of the controllers and respond accordenlly
-   void readOperatorControls(void);
+   // run the drive system
+   void runDriveControl(void);
 
-   // Run the ferrisWheel off of the robot state
-   void runFerrisWheel(FerrisState state);
-
-   // Determin the state the ferris wheel should be in.
-   void runFerrisWheelFromControls(void);
-
-   /************************ Mode Changing Methods ****************************/
+   /************************ Motor Mode Changing Methods ***********************/
    // Set the drive mode to run of velocity
-   void setDriveModeToVelocity(void);
+   void setDriveModeToVelocity(double maxVelocity = MAX_VELOCITY);
 
    // Set the drive mode to run off voltage percentage
    void setDriveModeToVoltagePercent(void);
@@ -262,41 +272,63 @@ private:
    // Set the drive mode to run off position
    void setDriveModeToPosition(void);
 
-   /************************ PID Control **************************************/
+   // Set the shooter mode to run off voltage
+   void setShooterModeToVoltage(void);
+
+   // Set the shooter mode to run off speed (RPM)
+   void setShooterModeToSpeed(void);
+
+   /************************ Ball handling Methods *****************************/
+   // control the ball pickup
+   void runBallPickup(void);
+
+   // Run the ferrisWheel off of the robot state
+   void runFerrisWheel(FerrisState state);
+
+   // Determin the state the ferris wheel should be in.
+   void runFerrisWheelFromControls(void);
+
+   // process the ball shooter
+   void runBallShooter(void);
+
+   /************************ Bridge Methods **********************************/
+   void runBridgeDeployment(void);
+
+   void runBridgeBalancingMode(bool previousTriggerState);
+
+   void InitializeBalanceOnBridge(void);
+   void BalanceOnBridge(void);
+
+   /************************ PID Control ****************************************/
    // Run the velocity pid
    void runVelocityPID(float setpointRight, float setpointLeft);
    void disableVelocityPID(void);
 
-   /************************ Camera Control ***********************************/
+   /************************ Shooter control Methods ****************************/
    // Read and process image and control shooter
-   bool cameraControl(void);
+   bool runShooterControl(float defaultVelocity = 0.0, float defaultVoltage = 0.0);
 
    // Process the camera images
    int readCamera(double &heightOfTriangle, double &distanceToTarget,
-                  double &voltageToDriveShooter, double &valueToRotate,
-                  double &pixelOff);
+                  float  &voltageToDriveShooter, float &velocityToDriveShooter,
+                  double &valueToRotate, double &pixelOff);
+
+   // set the shooter rotation based on targets
+   void setRotationBasedOnTargets(int targetStatus, double valueToRotate);
+
+   // set the shooter wheel value based on the targets
+   void setWheelBasedOnTargets(float voltageToDriveShooter, float velocityToDriveShooter);
 
    // Sort the target array
    void sortTargetArray(
          double targets[NUMBER_OF_TARGETS][NUMBER_OF_TARGET_PARAMETERS]);
 
-   // Drive the shooter autonomously
-   void autonomouslyDriveShooter(int targetStatus, double distanceToTarget,
-         double voltageToDriveShooter, double valueToRotate);
-
    /************************ Autonomous Moves *********************************/
-   void driveToShootingPosition(float distance = DISTANCE_TO_SHOOTING_POSITION);
+   void driveAndRunShooter(float distance, float speed = DEFAULT_AUTO_SPEED, float defaultVelocity = 0.0);
    void driveStraightForwardAndBackForDistance();
-   void shootOneBall();
-   void shootTwoBalls();
-   void driveAndShootTwo();
-   void balance();
-   void newBalance();
-   void driveToCenterBridge();
-   void driveToAllianceBridge();
-   void driveFromCenterBridge();
-   void driveFromAllianceBridge();
-   void dumpBridge();
+   void shootOneBall(float defaultVelocity = 0.0);
+   void shootTwoBalls(float defaultVelocity = 0.0);
+   void dumpBridge(float timeToHoldDownBridge = DEFAULT_TIME_TO_HOLD_BRIDGE_DOWN, float defaultShooterVelocity = 0.0);
 
    /************************ Data Sending *************************************/
    // Send data to the dashboard

@@ -77,7 +77,7 @@ void DashboardDataFormat::SendVisionData()
 }
 
 void DashboardDataFormat::SendIOPortData(bool bottomPosition, float position,
-                                         float frontDistance, float backDistance, float horizontalGyro, float verticalGyro)
+      float frontDistance, float backDistance, float horizontalGyro, float verticalGyro, float voltage)
 {
    Dashboard &dash = DriverStation::GetInstance()->GetLowPriorityDashboardPacker();
 
@@ -209,6 +209,7 @@ void DashboardDataFormat::SendIOPortData(bool bottomPosition, float position,
       dash.AddFloat(backDistance);
       dash.AddFloat(horizontalGyro);
       dash.AddFloat(verticalGyro);
+      dash.AddFloat(voltage);
    }
    dash.FinalizeCluster();
    dash.Finalize();

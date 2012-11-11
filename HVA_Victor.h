@@ -9,7 +9,7 @@
 
 #define DEFAULT_VELOCITY_D                0.0
 
-#define DEFAULT_POSITION_P                5.5
+#define DEFAULT_POSITION_P                5.0
 #define DEFAULT_POSITION_I                0.0
 #define DEFAULT_POSITION_D                2.0
 

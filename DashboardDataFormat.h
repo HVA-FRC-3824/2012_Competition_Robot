@@ -24,7 +24,7 @@ public:
          double leftSpeed, float rightSetValue, float leftSetValue,
          float throttleValue, float speed, float offset);
    void SendIOPortData(bool bottomPosition, float position,
-         float frontDistance, float backDistance, float horizontalGyro, float verticalGyro);
+         float frontDistance, float backDistance, float horizontalGyro, float verticalGyro, float voltage);
    void SendVisionData(void);
 
 private:
