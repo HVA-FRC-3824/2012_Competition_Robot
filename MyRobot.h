@@ -5,10 +5,11 @@
 #include "DashboardDataFormat.h"
 #include "ImageProcessing.h"
 #include "HVA_PIDController.h"
-#include "HVA_PIDOutput.cpp"
-#include "HVA_PIDSource.cpp"
-#include "HVA_PIDJaguarVelocitySource.cpp"
+#include "HVA_PIDOutput.h"
+#include "HVA_PIDSource.h"
+#include "HVA_PIDJaguarVelocitySource.h"
 #include "HVA_RobotDrive.h"
+#include "HVA_CANJaguar.h"
 #include "CurrentVelocityController.cpp"
 
 /**
@@ -71,6 +72,7 @@
 #define DRIVE_WITH_VOLTAGE                         3
 #define DRIVE_WITH_VELOCITY                        4
 #define DRIVE_WITH_CURRENT                         8
+#define DRIVE_WITH_CURRENT_VELOCITY                9
 
 /* Button Box Button Defines */
 #define AUTO_SWITCH_0                              1
@@ -136,11 +138,6 @@
 #define MOTOR_CURRENT_I                  		  0.01
 #define MOTOR_CURRENT_D                  		  0.0
 
-// TODO - Find the values to use for the velocity to current PID.
-#define MOTOR_VELOCTIY_TO_CURRENT_P            0.01
-#define MOTOR_VELOCTIY_TO_CURRENT_I            0.0
-#define MOTOR_VELOCTIY_TO_CURRENT_D            0.0
-
 /*************************** Other Defines ************************************/
 #define MAXIMUM_ROTATION_OF_SHOOTER             .3
 #define MINIMUM_ROTATION_OF_SHOOTER            -MAXIMUM_ROTATION_OF_SHOOTER
@@ -173,7 +170,7 @@ class MyRobot: public SimpleRobot
 private:
    enum
    {
-      kVelocity, kPercentage, kCurrent
+      kVelocity, kPercentage, kCurrent, kCurrentVelocity
    } m_driveSetting;
 
    enum FerrisState
@@ -185,8 +182,8 @@ private:
    ControlState m_shooterRotationControlState;
 
    DashboardDataFormat *m_dashboardDataFormat; // object to send data to the Driver station
-   CANJaguar *m_rightMotor; // Right drive motor
-   CANJaguar *m_leftMotor; // Left drive motor
+   HVA_CANJaguar *m_rightMotor; // Right drive motor
+   HVA_CANJaguar *m_leftMotor; // Left drive motor
    CurrentVelocityController *m_rightMotorVelocityPID; // Right Motor controlled by PID
    CurrentVelocityController *m_leftMotorVelocityPID; // left Motor controlled by PID
    CANJaguar *m_shooterWheel; // Shooter fly wheel
@@ -195,7 +192,6 @@ private:
    Victor *m_backBallPickup; // Rear ball pick-up moter
    Victor *m_ferrisWheel; // Ball storage wheel
    HVA_RobotDrive *m_robotDrive; // robot drive system
-   HVA_RobotDrive *m_robotDriveVelocityPID; // robot drive system controlled by PID
    Compressor *m_compressor; // Compressor
    DoubleSolenoid *m_ballLiftSolenoid; // Ball lift
    DoubleSolenoid *m_frontBridgeWheel; // Front stability wheel
@@ -213,11 +209,7 @@ private:
    Ultrasonic *ultra; // The ultra sonic sensor
    DriverStation *m_driverStation; // Driver Station
    DriverStationEnhancedIO *m_driverStationEnhancedIO; // Enhanced Driver Station
-   HVA_PIDOutput *m_pidOutput; // object that handles the output of the PID controller
-   HVA_PIDJaguarVelocity *m_rightJaguarSource; // Velocity source for jaguar
-   HVA_PIDJaguarVelocity *m_leftJaguarSource; // Velocity source for jaguar
-   PIDController *m_currentVelocityRight; // PID controller to drive a certain velocity using current mode    
-   PIDController *m_currentVelocityLeft; // PID controller to drive a certain velocity using current mode           
+   HVA_PIDOutput *m_pidOutput; // object that handles the output of the PID controller           
    double heightOfTriangle; // Height used for controling shooter velocity
    float m_rotation; // rotation to drive
    bool readyToFire; // Is the robot ready to fire
@@ -261,6 +253,9 @@ private:
 
    // Set the drive mode to current mode
    void setDriveModeToCurrent(void);
+   
+   // Set the drive mode to current Velocity
+   void setDriveModeToCurrentVelocity(void);
 
    /************************ PID Control **************************************/
    // Run the velocity pid

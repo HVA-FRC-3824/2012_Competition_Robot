@@ -1,3 +1,6 @@
+#ifndef __HVA_PIDSource_h__
+#define __HVA_PIDSource_h__
+
 #include "WPILib.h"
 
 class HVA_PIDSource : public PIDSource
@@ -16,3 +19,5 @@ public:
       return *value;
    }
 };
+
+#endif

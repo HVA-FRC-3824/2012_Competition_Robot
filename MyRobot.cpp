@@ -14,8 +14,10 @@
 MyRobot::MyRobot(void)
 {
    m_dashboardDataFormat = new DashboardDataFormat();
-   m_rightMotor = new CANJaguar(RIGHT_DRIVE_MOTOR, CANJaguar::kPercentVbus);
-   m_leftMotor = new CANJaguar(LEFT_DRIVE_MOTOR, CANJaguar::kPercentVbus);
+   m_rightMotor = new HVA_CANJaguar(RIGHT_DRIVE_MOTOR,
+         HVA_CANJaguar::kPercentVbus);
+   m_leftMotor = new HVA_CANJaguar(LEFT_DRIVE_MOTOR,
+         HVA_CANJaguar::kPercentVbus);
    m_shooterWheel = new CANJaguar(SHOOTER_WHEEL_MOTOR, CANJaguar::kVoltage);
    m_shooterRotate = new CANJaguar(SHOOTER_ROTATE_MOTOR, CANJaguar::kPosition);
    m_ferrisWheel = new Victor(FERRIS_WHEEL_MOTOR);
@@ -44,25 +46,6 @@ MyRobot::MyRobot(void)
 
    // reset the gyro PID and start with zero rotation
    m_rotation = 0.0f;
-
-   m_rightJaguarSource = new HVA_PIDJaguarVelocity(m_rightMotor);
-   m_leftJaguarSource = new HVA_PIDJaguarVelocity(m_leftMotor);
-
-   m_currentVelocityRight = new PIDController(MOTOR_VELOCTIY_TO_CURRENT_P,
-         MOTOR_VELOCTIY_TO_CURRENT_I, MOTOR_VELOCTIY_TO_CURRENT_D,
-         m_rightJaguarSource, m_rightMotor);
-
-   m_currentVelocityLeft = new PIDController(MOTOR_VELOCTIY_TO_CURRENT_P,
-         MOTOR_VELOCTIY_TO_CURRENT_I, MOTOR_VELOCTIY_TO_CURRENT_D,
-         m_rightJaguarSource, m_leftMotor);
-
-   m_rightMotorVelocityPID = new CurrentVelocityController(
-         m_currentVelocityRight);
-   m_leftMotorVelocityPID
-         = new CurrentVelocityController(m_currentVelocityLeft);
-
-   m_robotDriveVelocityPID = new HVA_RobotDrive(m_leftMotorVelocityPID,
-         m_rightMotorVelocityPID);
 
    /******************************* Setup ********************************/
    // Set the State Enums for the robot
@@ -108,10 +91,6 @@ MyRobot::MyRobot(void)
    m_robotDrive->SetInvertedMotor(RobotDrive::kRearLeftMotor, true);
    m_robotDrive->SetInvertedMotor(RobotDrive::kRearRightMotor, false);
 
-   // Reverse the correct drive motor
-   m_robotDriveVelocityPID->SetInvertedMotor(RobotDrive::kRearLeftMotor, true);
-   m_robotDriveVelocityPID->SetInvertedMotor(RobotDrive::kRearRightMotor, false);
-
    // Set the max speed for the robot
    m_robotDrive->SetMaxOutput(MAX_VOLTAGE_PERCENT);
 
@@ -120,17 +99,9 @@ MyRobot::MyRobot(void)
    camera.WriteCompression(20);
    camera.WriteBrightness(50);
 
-   // Set up the current controllers
-   m_currentVelocityRight->SetInputRange(-40, 40);
-   m_currentVelocityRight->Disable();
-   m_currentVelocityLeft->SetInputRange(-40, 40);
-   m_currentVelocityLeft->Disable();
-
    // Set the expiration for the watchdog
    m_robotDrive->SetExpiration(10.0);
    m_robotDrive->SetSafetyEnabled(false);
-   m_robotDriveVelocityPID->SetExpiration(10.0);
-   m_robotDriveVelocityPID->SetSafetyEnabled(false);
    /**************************************************************************/
 
    /******************************* Run **************************************/
@@ -159,9 +130,11 @@ void MyRobot::OperatorControl(void)
       readOperatorControls();
 
       /************Debug Printouts **********************************************/
-      printf("Position: %f\n", m_shooterRotate->GetPosition());
-      printf("FerrisVolt:%f\n", m_ferrisWheel->Get());
-      printf("Range:%f\n",m_ultrasonic->GetRangeInches());
+      //printf("Position: %f\n", m_shooterRotate->GetPosition());
+      //      printf("FerrisVolt:%f\n", m_ferrisWheel->Get());
+      //      printf("Range:%f\n", m_ultrasonic->GetRangeInches());
+      printf("Current right:%f\n", m_rightMotor->GetOutputCurrent());
+      printf("Current left:%f\n\n", m_leftMotor->GetOutputCurrent());
       //printf("ShooterVoltage: %f\n",  ((((m_driverStationEnhancedIO->GetAnalogIn(SHOOTER_VELOCITY_POT)/MAX_POT_VALUE)*(MAX_SHOOTER_SPEED_PERCENT - MIN_SHOOTER_SPEED_PERCENT)) + MIN_SHOOTER_SPEED_PERCENT) * MAX_ROBOT_VOLTAGE));
       //printf("Position: %f\n", ((m_driverStationEnhancedIO->GetAnalogIn(SHOOTER_ROTATION_POT) - MID_POT_VALUE) * ((MAXIMUM_ROTATION_OF_SHOOTER)/(MAX_POT_VALUE-MID_POT_VALUE))));
       //printf("WheelOffSet: %f\n", ((m_driverStationEnhancedIO->GetAnalogIn(SHOOTER_VELOCITY_POT) - MID_POT_VALUE)*((MAX_SHOOTER_VOLTAGE_ADJUSTMENT)/(MAX_POT_VALUE - MID_POT_VALUE))));
@@ -216,10 +189,15 @@ void MyRobot::readOperatorControls()
    {
       setDriveModeToCurrent();
    }
+   else if (m_joystick->GetRawButton(DRIVE_WITH_CURRENT_VELOCITY) == true)
+   {
+      setDriveModeToCurrentVelocity();
+   }
 
    /************************ Drive the Robot **********************************/
    // Drive the robot using Arcade drive
-   if (m_driveSetting == kPercentage || m_driveSetting == kCurrent)
+   if (m_driveSetting == kPercentage || m_driveSetting == kCurrent
+         || m_driveSetting == kCurrentVelocity)
    {
       m_robotDrive->ArcadeDrive(m_joystick->GetAxis(Joystick::kYAxis),
             m_joystick->GetThrottle() * ROTATE_REDUCE_FACTOR);
@@ -326,17 +304,18 @@ void MyRobot::runFerrisWheel(FerrisState state)
    static FerrisState previousState = kStop;
    static double time = Timer::GetFPGATimestamp();
    m_ferrisState = state;
-  
-   if((state != previousState) && (state != kStop))
+
+   if ((state != previousState) && (state != kStop))
    {
       time = Timer::GetFPGATimestamp();
    }
-   
-   if(state != kStop && (Timer::GetFPGATimestamp()-time) >= TIME_TILL_INTERRUPT_ENABLE)
+
+   if (state != kStop && (Timer::GetFPGATimestamp() - time)
+         >= TIME_TILL_INTERRUPT_ENABLE)
    {
       m_ferrisWheelStop->EnableInterrupts();
    }
-      
+
    switch (state)
    {
    case kForward:
@@ -550,8 +529,8 @@ int MyRobot::getStabilityStateFromGyro(void)
 void MyRobot::setDriveModeToVelocity(void)
 {
    m_driveSetting = kVelocity;
-   m_rightMotor->ChangeControlMode(CANJaguar::kSpeed);
-   m_leftMotor->ChangeControlMode(CANJaguar::kSpeed);
+   m_rightMotor->ChangeControlMode(HVA_CANJaguar::kSpeed);
+   m_leftMotor->ChangeControlMode(HVA_CANJaguar::kSpeed);
    m_rightMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
    m_leftMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
    m_rightMotor->SetPID(MOTOR_VELOCITY_P, MOTOR_VELOCITY_I, MOTOR_VELOCITY_D);
@@ -568,8 +547,8 @@ void MyRobot::setDriveModeToVelocity(void)
 void MyRobot::setDriveModeToVoltagePercent()
 {
    m_driveSetting = kPercentage;
-   m_rightMotor->ChangeControlMode(CANJaguar::kPercentVbus);
-   m_leftMotor->ChangeControlMode(CANJaguar::kPercentVbus);
+   m_rightMotor->ChangeControlMode(HVA_CANJaguar::kPercentVbus);
+   m_leftMotor->ChangeControlMode(HVA_CANJaguar::kPercentVbus);
    m_rightMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Coast);
    m_leftMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Coast);
    m_robotDrive->SetMaxOutput(MAX_VOLTAGE_PERCENT);
@@ -583,8 +562,8 @@ void MyRobot::setDriveModeToVoltagePercent()
 void MyRobot::setDriveModeToCurrent()
 {
    m_driveSetting = kCurrent;
-   m_rightMotor->ChangeControlMode(CANJaguar::kCurrent);
-   m_leftMotor->ChangeControlMode(CANJaguar::kCurrent);
+   m_rightMotor->ChangeControlMode(HVA_CANJaguar::kCurrent);
+   m_leftMotor->ChangeControlMode(HVA_CANJaguar::kCurrent);
    m_rightMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
    m_leftMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
    m_rightMotor->SetPID(MOTOR_CURRENT_P, MOTOR_CURRENT_I, MOTOR_CURRENT_D);
@@ -594,24 +573,21 @@ void MyRobot::setDriveModeToCurrent()
    m_leftMotor->EnableControl();
 }
 
-void MyRobot::runVelocityPID(float setpointRight, float setpointLeft)
+/**
+ * Set the drive mode to current Velocity
+ */
+void MyRobot::setDriveModeToCurrentVelocity(void)
 {
-   if (m_currentVelocityRight->IsEnabled() == false
-         || m_currentVelocityLeft->IsEnabled() == false)
-   {
-      m_currentVelocityRight->Reset();
-      m_currentVelocityRight->Enable();
-      m_currentVelocityLeft->Reset();
-      m_currentVelocityLeft->Enable();
-   }
-   m_currentVelocityRight->SetSetpoint(setpointRight);
-   m_currentVelocityLeft->SetSetpoint(setpointLeft);
-}
-
-void MyRobot::disableVelocityPID()
-{
-   m_currentVelocityRight->Disable();
-   m_currentVelocityLeft->Disable();
+   m_driveSetting = kCurrentVelocity;
+   m_rightMotor->ChangeControlMode(HVA_CANJaguar::kCurrentSpeed);
+   m_leftMotor->ChangeControlMode(HVA_CANJaguar::kCurrentSpeed);
+   m_rightMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+   m_leftMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+   m_rightMotor->SetPID(MOTOR_CURRENT_P, MOTOR_CURRENT_I, MOTOR_CURRENT_D);
+   m_leftMotor->SetPID(MOTOR_CURRENT_P, MOTOR_CURRENT_I, MOTOR_CURRENT_D);
+   m_robotDrive->SetMaxOutput(MAX_VELOCITY);
+   m_rightMotor->EnableControl();
+   m_leftMotor->EnableControl();
 }
 
 /**

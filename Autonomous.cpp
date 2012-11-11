@@ -184,9 +184,9 @@ void MyRobot::driveStraightForDistanceCurrent()
       DRIVING, REVERSE, STOPPED
    } autoState = DRIVING;
 
-   if (m_driveSetting == kCurrent)
+   if (m_driveSetting != kCurrentVelocity)
    {
-      setDriveModeToCurrent();
+      setDriveModeToCurrentVelocity();
    }
    
    while (IsAutonomous())
@@ -194,22 +194,17 @@ void MyRobot::driveStraightForDistanceCurrent()
       /************************ Run Stability Wheels *****************************/
       runStabilityWheelStateFromControls();
       
-      printf("Current Velocity: %f\n", m_leftMotor->GetSpeed());
-      printf("Set Velocity: %f\n", m_currentVelocityLeft->GetSetpoint());
-      printf("Error: %f\n\n", m_leftMotor->GetSpeed() - m_currentVelocityLeft->GetSetpoint());
-
-      printf("after get error\n");
       switch (autoState)
       {
       case DRIVING:
-         if (m_robotDriveVelocityPID->DriveDistanceUsingVelocity(.1, 10.0,
+         if (m_robotDrive->DriveDistanceUsingVelocity(.5, 15.0,
                MAX_ACCELERATION_DISTANCE))
          {
-            autoState = STOPPED;
+            autoState = REVERSE;
          }
          break;
       case REVERSE:
-         if (m_robotDriveVelocityPID->DriveDistanceUsingVelocity(.05, -10.0,
+         if (m_robotDrive->DriveDistanceUsingVelocity(.1, -15.0,
                MAX_ACCELERATION_DISTANCE))
          {
             autoState = STOPPED;
