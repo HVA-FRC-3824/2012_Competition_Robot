@@ -14,14 +14,14 @@
 MyRobot::MyRobot(void)
 {
    m_dashboardDataFormat = new DashboardDataFormat();
-   m_rightMotor = new CANJaguar(RIGHT_DRIVE_MOTOR, CANJaguar::kPercentVbus);
-   m_leftMotor = new CANJaguar(LEFT_DRIVE_MOTOR, CANJaguar::kPercentVbus);
-   m_shooterWheel = new CANJaguar(SHOOTER_WHEEL_MOTOR, CANJaguar::kVoltage);
-   m_shooterRotate = new CANJaguar(SHOOTER_ROTATE_MOTOR, CANJaguar::kPosition);
+//   m_rightMotor = new CANJaguar(RIGHT_DRIVE_MOTOR, CANJaguar::kPercentVbus);
+//   m_leftMotor = new CANJaguar(LEFT_DRIVE_MOTOR, CANJaguar::kPercentVbus);
+//   m_shooterWheel = new CANJaguar(SHOOTER_WHEEL_MOTOR, CANJaguar::kVoltage);
+//   m_shooterRotate = new CANJaguar(SHOOTER_ROTATE_MOTOR, CANJaguar::kPosition);
    m_ferrisWheel = new Victor(FERRIS_WHEEL_MOTOR);
    m_frontBallPickup = new Victor(FRONT_BALL_PICKUP_MOTOR);
    m_backBallPickup = new Victor(BACK_BALL_PICKUP_MOTOR);
-   m_robotDrive = new HVA_RobotDrive(m_leftMotor, m_rightMotor); // create a robot drive system with four moters
+//   m_robotDrive = new HVA_RobotDrive(m_leftMotor, m_rightMotor); // create a robot drive system with four moters
    m_compressor = new Compressor(COMPRESSOR_SENSOR, COMPRESSOR_RELAY);
    m_ballLiftSolenoid = new DoubleSolenoid(BALL_LIFT_FORWARD,
          BALL_LIFT_REVERSED);
@@ -44,24 +44,24 @@ MyRobot::MyRobot(void)
    // reset the gyro PID and start with zero rotation
    m_rotation = 0.0f;
 
-   m_rightJaguarSource = new HVA_PIDJaguarVelocity(m_rightMotor);
-   m_leftJaguarSource = new HVA_PIDJaguarVelocity(m_leftMotor);
+//   m_rightJaguarSource = new HVA_PIDJaguarVelocity(m_rightMotor);
+//   m_leftJaguarSource = new HVA_PIDJaguarVelocity(m_leftMotor);
 
-   m_currentVelocityRight = new PIDController(MOTOR_VELOCTIY_TO_CURRENT_P,
-         MOTOR_VELOCTIY_TO_CURRENT_I, MOTOR_VELOCTIY_TO_CURRENT_D,
-         m_rightJaguarSource, m_rightMotor);
+//   m_currentVelocityRight = new PIDController(MOTOR_VELOCTIY_TO_CURRENT_P,
+//         MOTOR_VELOCTIY_TO_CURRENT_I, MOTOR_VELOCTIY_TO_CURRENT_D,
+//         m_rightJaguarSource, m_rightMotor);
 
-   m_currentVelocityLeft = new PIDController(MOTOR_VELOCTIY_TO_CURRENT_P,
-         MOTOR_VELOCTIY_TO_CURRENT_I, MOTOR_VELOCTIY_TO_CURRENT_D,
-         m_rightJaguarSource, m_leftMotor);
+//   m_currentVelocityLeft = new PIDController(MOTOR_VELOCTIY_TO_CURRENT_P,
+//         MOTOR_VELOCTIY_TO_CURRENT_I, MOTOR_VELOCTIY_TO_CURRENT_D,
+//         m_rightJaguarSource, m_leftMotor);
+//
+//   m_rightMotorVelocityPID = new CurrentVelocityController(
+//         m_currentVelocityRight);
+//   m_leftMotorVelocityPID
+//         = new CurrentVelocityController(m_currentVelocityLeft);
 
-   m_rightMotorVelocityPID = new CurrentVelocityController(
-         m_currentVelocityRight);
-   m_leftMotorVelocityPID
-         = new CurrentVelocityController(m_currentVelocityLeft);
-
-   m_robotDriveVelocityPID = new HVA_RobotDrive(m_leftMotorVelocityPID,
-         m_rightMotorVelocityPID);
+//   m_robotDriveVelocityPID = new HVA_RobotDrive(m_leftMotorVelocityPID,
+//         m_rightMotorVelocityPID);
 
    /******************************* Setup ********************************/
    // Set the State Enums for the robot
@@ -70,43 +70,43 @@ MyRobot::MyRobot(void)
    ferrisState = kStop;
    shooterRotationControlState = kTeleoperated;
 
-   // Set up the right drive Jaguar
-   m_rightMotor->SetSpeedReference(CANJaguar::kSpeedRef_QuadEncoder);
-   m_rightMotor->SetPositionReference(CANJaguar::kPosRef_QuadEncoder);
-   m_rightMotor->ConfigEncoderCodesPerRev(NUMBER_OF_ENCODER_LINES_MOTORS);
-   m_rightMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Coast);
-   m_rightMotor->ConfigFaultTime(.5);
-
-   // Set up the left drive Jaguar
-   m_leftMotor->SetSpeedReference(CANJaguar::kSpeedRef_QuadEncoder);
-   m_leftMotor->SetPositionReference(CANJaguar::kPosRef_QuadEncoder);
-   m_leftMotor->ConfigEncoderCodesPerRev(NUMBER_OF_ENCODER_LINES_MOTORS);
-   m_leftMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Coast);
-   m_leftMotor->ConfigFaultTime(.5);
-
-   // Set up the Shooter Jaguar
-   m_shooterWheel->ConfigNeutralMode(CANJaguar::kNeutralMode_Coast);
-   m_shooterWheel->ConfigFaultTime(.5);
-
-   // Set up the Rotate Jaguar
-   m_shooterRotate->SetSpeedReference(CANJaguar::kSpeedRef_QuadEncoder);
-   m_shooterRotate->SetPositionReference(CANJaguar::kPosRef_QuadEncoder);
-   m_shooterRotate->ConfigEncoderCodesPerRev(1440);
-   m_shooterRotate->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
-   m_shooterRotate->SetPID(ROTATE_CONTROLLER_P, ROTATE_CONTROLLER_I,
-         ROTATE_CONTROLLER_D);
-   m_shooterRotate->ConfigFaultTime(.5);
-
-   // Reverse the correct drive motor
-   m_robotDrive->SetInvertedMotor(RobotDrive::kRearLeftMotor, true);
-   m_robotDrive->SetInvertedMotor(RobotDrive::kRearRightMotor, false);
+//   // Set up the right drive Jaguar
+//   m_rightMotor->SetSpeedReference(CANJaguar::kSpeedRef_QuadEncoder);
+//   m_rightMotor->SetPositionReference(CANJaguar::kPosRef_QuadEncoder);
+//   m_rightMotor->ConfigEncoderCodesPerRev(NUMBER_OF_ENCODER_LINES_MOTORS);
+//   m_rightMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Coast);
+//   m_rightMotor->ConfigFaultTime(.5);
+//
+//   // Set up the left drive Jaguar
+//   m_leftMotor->SetSpeedReference(CANJaguar::kSpeedRef_QuadEncoder);
+//   m_leftMotor->SetPositionReference(CANJaguar::kPosRef_QuadEncoder);
+//   m_leftMotor->ConfigEncoderCodesPerRev(NUMBER_OF_ENCODER_LINES_MOTORS);
+//   m_leftMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Coast);
+//   m_leftMotor->ConfigFaultTime(.5);
+//
+//   // Set up the Shooter Jaguar
+//   m_shooterWheel->ConfigNeutralMode(CANJaguar::kNeutralMode_Coast);
+//   m_shooterWheel->ConfigFaultTime(.5);
+//
+//   // Set up the Rotate Jaguar
+//   m_shooterRotate->SetSpeedReference(CANJaguar::kSpeedRef_QuadEncoder);
+//   m_shooterRotate->SetPositionReference(CANJaguar::kPosRef_QuadEncoder);
+//   m_shooterRotate->ConfigEncoderCodesPerRev(1440);
+//   m_shooterRotate->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+//   m_shooterRotate->SetPID(ROTATE_CONTROLLER_P, ROTATE_CONTROLLER_I,
+//         ROTATE_CONTROLLER_D);
+//   m_shooterRotate->ConfigFaultTime(.5);
 
    // Reverse the correct drive motor
-   m_robotDriveVelocityPID->SetInvertedMotor(RobotDrive::kRearLeftMotor, true);
-   m_robotDriveVelocityPID->SetInvertedMotor(RobotDrive::kRearRightMotor, false);
+//   m_robotDrive->SetInvertedMotor(RobotDrive::kRearLeftMotor, true);
+//   m_robotDrive->SetInvertedMotor(RobotDrive::kRearRightMotor, false);
+
+   // Reverse the correct drive motor
+//   m_robotDriveVelocityPID->SetInvertedMotor(RobotDrive::kRearLeftMotor, true);
+//   m_robotDriveVelocityPID->SetInvertedMotor(RobotDrive::kRearRightMotor, false);
 
    // Set the max speed for the robot
-   m_robotDrive->SetMaxOutput(MAX_VOLTAGE_PERCENT);
+//   m_robotDrive->SetMaxOutput(MAX_VOLTAGE_PERCENT);
 
    // Setup the camera
    camera.WriteResolution(AxisCamera::kResolution_320x240);
@@ -114,16 +114,16 @@ MyRobot::MyRobot(void)
    camera.WriteBrightness(50);
 
    // Set up the current controllers
-   m_currentVelocityRight->SetInputRange(-40, 40);
-   m_currentVelocityRight->Disable();
-   m_currentVelocityLeft->SetInputRange(-40, 40);
-   m_currentVelocityLeft->Disable();
+//   m_currentVelocityRight->SetInputRange(-40, 40);
+//   m_currentVelocityRight->Disable();
+//   m_currentVelocityLeft->SetInputRange(-40, 40);
+//   m_currentVelocityLeft->Disable();
 
    // Set the expiration for the watchdog
-   m_robotDrive->SetExpiration(10.0);
-   m_robotDrive->SetSafetyEnabled(false);
-   m_robotDriveVelocityPID->SetExpiration(10.0);
-   m_robotDriveVelocityPID->SetSafetyEnabled(false);
+//   m_robotDrive->SetExpiration(10.0);
+//   m_robotDrive->SetSafetyEnabled(false);
+//   m_robotDriveVelocityPID->SetExpiration(10.0);
+//   m_robotDriveVelocityPID->SetSafetyEnabled(false);
    /**************************************************************************/
 
    /******************************* Run **************************************/
@@ -137,10 +137,10 @@ MyRobot::MyRobot(void)
 void MyRobot::OperatorControl(void)
 {
    // Enable the jaguars
-   m_rightMotor->EnableControl();
-   m_leftMotor->EnableControl();
-   m_shooterRotate->EnableControl();
-   m_shooterWheel->EnableControl();
+//   m_rightMotor->EnableControl();
+//   m_leftMotor->EnableControl();
+//   m_shooterRotate->EnableControl();
+//   m_shooterWheel->EnableControl();
 
    //m_robotDrive->SetSafetyEnabled(true);
    while (IsOperatorControl())
@@ -152,7 +152,7 @@ void MyRobot::OperatorControl(void)
       readOperatorControls();
 
       /************Debug Printouts **********************************************/
-      printf("Position: %f\n", m_shooterRotate->GetPosition());
+//      printf("Position: %f\n", m_shooterRotate->GetPosition());
       //printf("ShooterVoltage: %f\n",  ((((m_driverStationEnhancedIO->GetAnalogIn(SHOOTER_VELOCITY_POT)/MAX_POT_VALUE)*(MAX_SHOOTER_SPEED_PERCENT - MIN_SHOOTER_SPEED_PERCENT)) + MIN_SHOOTER_SPEED_PERCENT) * MAX_ROBOT_VOLTAGE));
       //printf("Position: %f\n", ((m_driverStationEnhancedIO->GetAnalogIn(SHOOTER_ROTATION_POT) - MID_POT_VALUE) * ((MAXIMUM_ROTATION_OF_SHOOTER)/(MAX_POT_VALUE-MID_POT_VALUE))));
       //printf("WheelOffSet: %f\n", ((m_driverStationEnhancedIO->GetAnalogIn(SHOOTER_VELOCITY_POT) - MID_POT_VALUE)*((MAX_SHOOTER_VOLTAGE_ADJUSTMENT)/(MAX_POT_VALUE - MID_POT_VALUE))));
@@ -178,7 +178,7 @@ void MyRobot::OperatorControl(void)
       //            m_leftMotor->GetFaults());
       // Send data to the dashboard
 
-      printf("IO: %i\n\n", m_ferrisWheelStop->Get());
+      //printf("IO: %i\n\n", m_ferrisWheelStop->Get());
       sendDashboardData();
 
       // Wait for a motor update time
@@ -209,22 +209,22 @@ void MyRobot::readOperatorControls()
 
    /************************ Drive the Robot **********************************/
    // Drive the robot using Arcade drive
-   if (driveSetting == kPercentage || driveSetting == kCurrent)
-   {
-      m_robotDrive->ArcadeDrive(m_joystick->GetAxis(Joystick::kYAxis),
-            m_joystick->GetThrottle() * ROTATE_REDUCE_FACTOR);
-   }
-   else
-   {
-      m_robotDrive->ArcadeVelocityDriveStepped(
-            m_joystick->GetAxis(Joystick::kYAxis),
-            (float) (m_joystick->GetThrottle() * ROTATE_REDUCE_FACTOR),
-            (float) MAX_ACCELERATION_ARCADE, 2.0f);
-   }
+//   if (driveSetting == kPercentage || driveSetting == kCurrent)
+//   {
+//      m_robotDrive->ArcadeDrive(m_joystick->GetAxis(Joystick::kYAxis),
+//            m_joystick->GetThrottle() * ROTATE_REDUCE_FACTOR);
+//   }
+//   else
+//   {
+//      m_robotDrive->ArcadeVelocityDriveStepped(
+//            m_joystick->GetAxis(Joystick::kYAxis),
+//            (float) (m_joystick->GetThrottle() * ROTATE_REDUCE_FACTOR),
+//            (float) MAX_ACCELERATION_ARCADE, 2.0f);
+//   }
    
    /************************ Check Rotation Override Switch *******************/
    // Check the rotation override switches, Check to see if operator control
-   if ((m_driverStationEnhancedIO->GetDigital(ROTATION_OVERRIDE) == true)
+   if ((m_driverStationEnhancedIO->GetDigital(ROTATION_OVERRIDE) == true || m_driverStationEnhancedIO->GetDigital(AUTONOMOUSLY_RUN_SHOOTER) == false )
          && (IsOperatorControl() == true))
    {
       shooterRotationControlState = kTeleoperated;
@@ -244,19 +244,21 @@ void MyRobot::readOperatorControls()
                == true) && (m_driverStationEnhancedIO->GetDigital(
                SHOOTER_WHEEL_OVERRIDE) == true)))
    {
-      printf("Volt Over\n");
-      m_shooterWheel->Set(
-            (((m_driverStationEnhancedIO->GetAnalogIn(SHOOTER_VELOCITY_POT)
-                  / MAX_POT_VALUE) * (MAX_SHOOTER_SPEED_PERCENT
-                  - MIN_SHOOTER_SPEED_PERCENT)) + MIN_SHOOTER_SPEED_PERCENT)
-                  * MAX_ROBOT_VOLTAGE);
+      printf("Volt Over: %f\n", (((m_driverStationEnhancedIO->GetAnalogIn(SHOOTER_VELOCITY_POT)
+                              / MAX_POT_VALUE) * (MAX_SHOOTER_SPEED_PERCENT
+                              - MIN_SHOOTER_SPEED_PERCENT)) + MIN_SHOOTER_SPEED_PERCENT)
+                              * MAX_ROBOT_VOLTAGE);
+//      m_shooterWheel->Set(
+//            (((m_driverStationEnhancedIO->GetAnalogIn(SHOOTER_VELOCITY_POT)
+//                  / MAX_POT_VALUE) * (MAX_SHOOTER_SPEED_PERCENT
+//                  - MIN_SHOOTER_SPEED_PERCENT)) + MIN_SHOOTER_SPEED_PERCENT)
+//                  * MAX_ROBOT_VOLTAGE);
    }
    else if ((m_driverStationEnhancedIO->GetDigital(AUTONOMOUSLY_RUN_SHOOTER)
-         == false) && (m_driverStationEnhancedIO->GetDigital(
-         SHOOTER_WHEEL_OVERRIDE) == false))
+         == false))
    {
-      printf("Stop\n");
-      m_shooterWheel->Set(0.0f);
+      printf("Stop Volt\n");
+//      m_shooterWheel->Set(0.0f);
    }
 
    /************************ BALL PICK_UP *************************************/
@@ -290,15 +292,19 @@ void MyRobot::readOperatorControls()
    if (shooterRotationControlState == kTeleoperated
          && m_driverStationEnhancedIO->GetDigital(ROTATION_OVERRIDE) == true)
    {
-      m_shooterRotate->Set(
-            (m_driverStationEnhancedIO->GetAnalogIn(SHOOTER_ROTATION_POT)
-                  - MID_POT_VALUE) * ((MAXIMUM_ROTATION_OF_SHOOTER)
-                  / (MAX_POT_VALUE - MID_POT_VALUE)));
+      printf("Rotation Pot Control: %f\n", (m_driverStationEnhancedIO->GetAnalogIn(SHOOTER_ROTATION_POT)
+                              - MID_POT_VALUE) * ((MAXIMUM_ROTATION_OF_SHOOTER)
+                              / (MAX_POT_VALUE - MID_POT_VALUE)));
+//      m_shooterRotate->Set(
+//            (m_driverStationEnhancedIO->GetAnalogIn(SHOOTER_ROTATION_POT)
+//                  - MID_POT_VALUE) * ((MAXIMUM_ROTATION_OF_SHOOTER)
+//                  / (MAX_POT_VALUE - MID_POT_VALUE)));
    }
    else if (shooterRotationControlState == kTeleoperated
          && m_driverStationEnhancedIO->GetDigital(ROTATION_OVERRIDE) == false)
    {
-      m_shooterRotate->Set(0.0f);
+      printf("Center Rotation\n");
+//      m_shooterRotate->Set(0.0f);
    }
 
    /************************ RUN Ball Shooter ********************************/
@@ -525,16 +531,16 @@ int MyRobot::getStabilityStateFromGyro(void)
  */
 void MyRobot::setDriveModeToVelocity(void)
 {
-   driveSetting = kVelocity;
-   m_rightMotor->ChangeControlMode(CANJaguar::kSpeed);
-   m_leftMotor->ChangeControlMode(CANJaguar::kSpeed);
-   m_rightMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
-   m_leftMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
-   m_rightMotor->SetPID(MOTOR_VELOCITY_P, MOTOR_VELOCITY_I, MOTOR_VELOCITY_D);
-   m_leftMotor->SetPID(MOTOR_VELOCITY_P, MOTOR_VELOCITY_I, MOTOR_VELOCITY_D);
-   m_robotDrive->SetMaxOutput(MAX_VELOCITY);
-   m_rightMotor->EnableControl();
-   m_leftMotor->EnableControl();
+//   driveSetting = kVelocity;
+//   m_rightMotor->ChangeControlMode(CANJaguar::kSpeed);
+//   m_leftMotor->ChangeControlMode(CANJaguar::kSpeed);
+//   m_rightMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+//   m_leftMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+//   m_rightMotor->SetPID(MOTOR_VELOCITY_P, MOTOR_VELOCITY_I, MOTOR_VELOCITY_D);
+//   m_leftMotor->SetPID(MOTOR_VELOCITY_P, MOTOR_VELOCITY_I, MOTOR_VELOCITY_D);
+//   m_robotDrive->SetMaxOutput(MAX_VELOCITY);
+//   m_rightMotor->EnableControl();
+//   m_leftMotor->EnableControl();
 }
 
 /**
@@ -543,14 +549,14 @@ void MyRobot::setDriveModeToVelocity(void)
  */
 void MyRobot::setDriveModeToVoltagePercent()
 {
-   driveSetting = kPercentage;
-   m_rightMotor->ChangeControlMode(CANJaguar::kPercentVbus);
-   m_leftMotor->ChangeControlMode(CANJaguar::kPercentVbus);
-   m_rightMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Coast);
-   m_leftMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Coast);
-   m_robotDrive->SetMaxOutput(MAX_VOLTAGE_PERCENT);
-   m_rightMotor->EnableControl();
-   m_leftMotor->EnableControl();
+//   driveSetting = kPercentage;
+//   m_rightMotor->ChangeControlMode(CANJaguar::kPercentVbus);
+//   m_leftMotor->ChangeControlMode(CANJaguar::kPercentVbus);
+//   m_rightMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Coast);
+//   m_leftMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Coast);
+//   m_robotDrive->SetMaxOutput(MAX_VOLTAGE_PERCENT);
+//   m_rightMotor->EnableControl();
+//   m_leftMotor->EnableControl();
 }
 
 /**
@@ -558,16 +564,16 @@ void MyRobot::setDriveModeToVoltagePercent()
  */
 void MyRobot::setDriveModeToCurrent()
 {
-   driveSetting = kCurrent;
-   m_rightMotor->ChangeControlMode(CANJaguar::kCurrent);
-   m_leftMotor->ChangeControlMode(CANJaguar::kCurrent);
-   m_rightMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
-   m_leftMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
-   m_rightMotor->SetPID(MOTOR_CURRENT_P, MOTOR_CURRENT_I, MOTOR_CURRENT_D);
-   m_leftMotor->SetPID(MOTOR_CURRENT_P, MOTOR_CURRENT_I, MOTOR_CURRENT_D);
-   m_robotDrive->SetMaxOutput(MAX_CURRENT);
-   m_rightMotor->EnableControl();
-   m_leftMotor->EnableControl();
+//   driveSetting = kCurrent;
+//   m_rightMotor->ChangeControlMode(CANJaguar::kCurrent);
+//   m_leftMotor->ChangeControlMode(CANJaguar::kCurrent);
+//   m_rightMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+//   m_leftMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+//   m_rightMotor->SetPID(MOTOR_CURRENT_P, MOTOR_CURRENT_I, MOTOR_CURRENT_D);
+//   m_leftMotor->SetPID(MOTOR_CURRENT_P, MOTOR_CURRENT_I, MOTOR_CURRENT_D);
+//   m_robotDrive->SetMaxOutput(MAX_CURRENT);
+//   m_rightMotor->EnableControl();
+//   m_leftMotor->EnableControl();
 }
 
 void MyRobot::runVelocityPID(float setpointRight, float setpointLeft)
@@ -598,12 +604,12 @@ void MyRobot::sendDashboardData()
    // send IO data to the DriverStation
    m_dashboardDataFormat->SendLCDData(
          heightOfTriangle,
-         m_rightMotor->GetSpeed(),
-         m_leftMotor->GetSpeed(),
-         m_rightMotor->Get(),
-         m_leftMotor->Get(),
-         m_shooterWheel->Get(),
-         m_shooterRotate->GetPosition(),
+         0.0,//m_rightMotor->GetSpeed(),
+         0.0,//m_leftMotor->GetSpeed(),
+         0.0,//m_rightMotor->Get(),
+         0.0,//m_leftMotor->Get(),
+         0.0,//m_shooterWheel->Get(),
+         0.0,//m_shooterRotate->GetPosition(),
          ((m_driverStationEnhancedIO->GetAnalogIn(SHOOTER_VELOCITY_POT)
                - MID_POT_VALUE) * ((MAX_SHOOTER_VOLTAGE_ADJUSTMENT)
                / (MAX_POT_VALUE - MID_POT_VALUE))));
