@@ -8,7 +8,7 @@
  * to send to the dashboard.  The PackAndSend method does all the work.  You could
  * put the packing code directly in your code, but this model protects you from
  * packing data in the wrong order throughout your code.
- * 
+ *
  * The data and the format of this structure are just an example.  It is written to
  * match the initial data format expected by the LabVIEW Dashboard project.  Feel free
  * to add data elements or remove them.  Just remember to make any changes consistently
@@ -17,20 +17,22 @@
 class DashboardDataFormat : public SensorBase
 {
 public:
-	DashboardDataFormat(void);
-	virtual ~DashboardDataFormat();
-	void SendLCDData(double height, double rightSpeed,
-			double leftSpeed, float rightSetValue, float leftSetValue,
-			double rightPosition, double leftPosition, float throttleValue);
-	void SendIOPortData(void);
-	void SendVisionData(void);
+   DashboardDataFormat(void);
+   virtual ~DashboardDataFormat();
+
+   void SendLCDData(double height, double rightSpeed,
+         double leftSpeed, float rightSetValue, float leftSetValue, float P, float I, float D,
+         float throttleValue);
+   void SendIOPortData(void);
+   void SendVisionData(void);
+
 private:
-	DISALLOW_COPY_AND_ASSIGN(DashboardDataFormat);
-	AnalogModule *analogModule1;
-	AnalogModule *analogModule2;
-	DigitalModule *digitalModule1;
-	DigitalModule *digitalModule2;
-	DriverStationLCD *dsLCD;
+   DISALLOW_COPY_AND_ASSIGN(DashboardDataFormat);
+   AnalogModule     *analogModule1;
+   AnalogModule     *analogModule2;
+   DigitalModule    *digitalModule1;
+   DigitalModule    *digitalModule2;
+   DriverStationLCD *dsLCD;
 };
 
 #endif // __DashboardDataFormat_h__
