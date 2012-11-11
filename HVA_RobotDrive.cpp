@@ -48,7 +48,8 @@ HVA_RobotDrive::HVA_RobotDrive(SpeedController &frontLeftMotor,
  * Drive the robot a certaint distance and then stop. 
  * Return true when distance is reached.
  */
-bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance, float maxAcceleration)
+bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance,
+      float maxAcceleration)
 {
    static double previousTime = Timer::GetFPGATimestamp();
    static bool distanceRunning = false;
@@ -60,7 +61,7 @@ bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance, 
    double stoppingDistance = 0;
 
    previousTime = Timer::GetFPGATimestamp();
-   
+
    maxSpeed = fabs(maxSpeed);
 
    // Make sure the code is still being looped throught
@@ -98,8 +99,7 @@ bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance, 
       // depending on the stage find velocity differently
       if (stopping == false)
       {
-         if (motorOutputVelocity + maxAcceleration * changeInTime
-               <= maxSpeed)
+         if (motorOutputVelocity + maxAcceleration * changeInTime <= maxSpeed)
          {
             motorOutputVelocity += maxAcceleration * changeInTime;
          }
@@ -111,8 +111,7 @@ bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance, 
       // Stopping
       else
       {
-         if (motorOutputVelocity - maxAcceleration * changeInTime
-               >= 0)
+         if (motorOutputVelocity - maxAcceleration * changeInTime >= 0)
          {
             motorOutputVelocity -= maxAcceleration * changeInTime;
          }
@@ -130,8 +129,8 @@ bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance, 
    else
    {
       // Calculate the stopping distance
-      stoppingDistance = -(pow(motorOutputVelocity * (m_maxOutput / 60), 2) / (2
-            * maxAcceleration * (m_maxOutput / 60)));
+      stoppingDistance = -(pow(motorOutputVelocity * (m_maxOutput / 60), 2)
+            / (2 * maxAcceleration * (m_maxOutput / 60)));
 
       // Start stopping if stopping distance is greatter than distance left
       if (stoppingDistance <= (distance
@@ -144,8 +143,7 @@ bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance, 
       // depending on the stage find velocity differently
       if (stopping == false)
       {
-         if (motorOutputVelocity - maxAcceleration * changeInTime
-               >= -maxSpeed)
+         if (motorOutputVelocity - maxAcceleration * changeInTime >= -maxSpeed)
          {
             motorOutputVelocity -= maxAcceleration * changeInTime;
          }
@@ -157,8 +155,7 @@ bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance, 
       // Stopping
       else
       {
-         if (motorOutputVelocity + maxAcceleration * changeInTime
-               <= 0)
+         if (motorOutputVelocity + maxAcceleration * changeInTime <= 0)
          {
             motorOutputVelocity += maxAcceleration * changeInTime;
          }
@@ -171,7 +168,7 @@ bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance, 
 
       SetLeftRightMotorOutputs(-motorOutputVelocity, -motorOutputVelocity);
    }
-   
+
    // Check to see if the distance is reached.
    if (distanceRunning == true)
    {
@@ -192,7 +189,8 @@ bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance, 
  * @param rotateValue The value to use for the rotate right/left
  * @param squaredInputs If set, increases the sensitivity at low speeds
  */
-void HVA_RobotDrive::ArcadeVelocityDriveStepped(float moveValue, float rotateValue, float maxAcceleration, bool squaredInputs)
+void HVA_RobotDrive::ArcadeVelocityDriveStepped(float moveValue,
+      float rotateValue, float maxAcceleration, bool squaredInputs)
 {
    static double previousTime = Timer::GetFPGATimestamp();
 
@@ -259,8 +257,8 @@ void HVA_RobotDrive::ArcadeVelocityDriveStepped(float moveValue, float rotateVal
    if (changeInTime < TIME_THRESHOLD)
    {
       // Set the output for the left motor.
-      if (leftMotorDesiredOutput > leftMotorOutputVelocity
-            + maxAcceleration * changeInTime)
+      if (leftMotorDesiredOutput > leftMotorOutputVelocity + maxAcceleration
+            * changeInTime)
          leftMotorOutputVelocity += maxAcceleration * changeInTime;
       else if (leftMotorDesiredOutput < leftMotorOutputVelocity
             - maxAcceleration * changeInTime)
@@ -269,8 +267,8 @@ void HVA_RobotDrive::ArcadeVelocityDriveStepped(float moveValue, float rotateVal
          leftMotorOutputVelocity = leftMotorDesiredOutput;
 
       // Set the output for the right motor.
-      if (rightMotorDesiredOutput > rightMotorOutputVelocity
-            + maxAcceleration * changeInTime)
+      if (rightMotorDesiredOutput > rightMotorOutputVelocity + maxAcceleration
+            * changeInTime)
          rightMotorOutputVelocity += maxAcceleration * changeInTime;
       else if (rightMotorDesiredOutput < rightMotorOutputVelocity
             - maxAcceleration * changeInTime)
@@ -286,6 +284,7 @@ void HVA_RobotDrive::ArcadeVelocityDriveStepped(float moveValue, float rotateVal
 
    SetLeftRightMotorOutputs(-leftMotorOutputVelocity, -rightMotorOutputVelocity);
 }
+
 void HVA_RobotDrive::ArcadeVelocityDriveStepped(float moveValue,
       float rotateValue, float maxForwardAcceleration,
       float maxRotationalAcceleration, bool squaredInputs)

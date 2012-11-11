@@ -9,8 +9,12 @@
 /* Conversion Defines */
 #define GYRO_CONVERSION               0.0044
 #define PIXEL_CONVERSION             0.00009
+
+// Incress the value of the Voltage offset to incress the distance of the shooter.
 // Calculated shooter voltage offset     29.32880164
 #define SHOOTER_VOLTAGE_OFFSET           29.42880164
+
+// Incress the value of the pixel offset in order to aim more to the right.
 #define PIXEL_OFFSET                     10.0
 /******************************************************************************/
 
@@ -80,7 +84,6 @@ bool MyRobot::cameraControl(void)
       }
    }
    
-   printf("Pixels off: %f\n\n", pixelOff);
    if ((fabs(pixelOff) < PIXEL_OFF_THRESHOLD) && (fabs(
          m_shooterWheel->GetOutputVoltage() - voltageToDriveShooter)
          < VOLTAGE_THRESHOLD))
@@ -223,7 +226,6 @@ int MyRobot::readCamera(double &heightOfTriangle, double &distanceToTarget,
                               / 2.0), 2.0));
 
       // Calculate the voltage to drive the shooter
-      // TODO - Recalculate the Voltage off of the height of the triangle
       if (m_buttonBox->GetRawButton(CALCULATE_VOLTAGE) == true)
       {
          voltageToDriveShooter = (-0.00001894 * pow(heightOfTriangle, 3)) +
@@ -249,6 +251,7 @@ int MyRobot::readCamera(double &heightOfTriangle, double &distanceToTarget,
    if (targetStatus == 0 || targetStatus == 1)
    {
       pixelOff = ((results[TOP_TARGET][CENTER_OF_MASS_X_INDEX] + PIXEL_OFFSET) - (320 / 2));
+      printf("Pixel Off: %f\n\n", pixelOff);
       valueToRotate = pixelOff * PIXEL_CONVERSION;
    }
 

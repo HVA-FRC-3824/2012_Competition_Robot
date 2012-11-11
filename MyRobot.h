@@ -11,12 +11,16 @@
 /**
  * History:
  *    Custom 1 - First custom made before season. (Outdated)
- *    Custom 2 - First custom for the season. Contorls componates manually (Outdated)
- *    Custom 3 - Added camera tracking and camera shooter control (Outdated)
- *    Custom 4 - Added camera task and automomous modes (Outdated)
- *    Custom 5 - Added ramp control and added velocity controls to the library (Stable)
- *    Custom 6 - Added autonomous code and revised the ramp control. (Stable)
- *    Custom 7 - Added new equation for voltage
+ *    Custom 2 - First custom for the season. Contorls componates manually. (Outdated)
+ *    Custom 3 - Added camera tracking and camera shooter control. (Outdated)
+ *    Custom 4 - Added camera task and automomous modes. (Outdated)
+ *    Custom 5 - Added ramp control and added velocity controls to the library. (Outdated)
+ *    Custom 6 - Added autonomous code and revised the ramp control. (Outdated)
+ *    Custom 7 - Added new equation for voltage. (Stable)
+ *    Custom 8 - Added balencing code to the autonomous. (Testing/Stable)
+ *    
+ *    note:
+ *       174 inch for 10 rev
  */
 
 /*************************** Robot Defines ************************************/
@@ -39,6 +43,8 @@
 #define COMPRESSOR_SENSOR                  1
 #define FERRIS_WHEEL_STOP_PORT             2
 #define BOTTOM_SLOT_DETECTOR_PORT          4
+#define FRONT_BRIDGE_WHEEL_LIMIT           5
+#define BACK_BRIDGE_WHEEL_LIMIT            7
                                            
 /* Relay PORT Defines */                   
 #define COMPRESSOR_RELAY                   1
@@ -114,12 +120,12 @@
 #define ROTATE_CONTROLLER_P              4000
 #define ROTATE_CONTROLLER_I              0.2
 #define VALUE_TO_INCRESS_I                .01
-#define INCRESSED_I_VALUE                10.0
+#define INCRESSED_I_VALUE                1.0
 #define ROTATE_CONTROLLER_D              10.0
 
-#define MOTOR_P                          2.0
-#define MOTOR_I                          0.1
-#define MOTOR_D                          0.5
+#define MOTOR_VELOCITY_P                 2.0
+#define MOTOR_VELOCITY_I                 0.1
+#define MOTOR_VELOCITY_D                 0.5
 
 /******************************************************************************/
 
@@ -149,6 +155,8 @@ private:
    Joystick            *m_buttonBox;            // Box of Buttons
    DigitalInput        *m_ferrisWheelStop;      // Ferris wheel limit switch
    DigitalInput        *m_bottomSlot;           // Bottom slot photo gate
+   DigitalInput        *m_frontBridgeWheelLimit;// Limit switch used to see if the arm is up
+   DigitalInput        *m_backBridgeWheelLimit; // Limit switch used to see if the arm is up
    Gyro                *m_gyroHorizontal;       // Horizontally mounted gyro
    Gyro                *m_gyroVertical;         // Vertically mounted gyro
    Ultrasonic          *ultra;                  // The ultra sonic sensor
@@ -199,8 +207,11 @@ private:
    
    /************************ Autonomous Moves *********************************/
    void driveStraightForDistance();
+   void shootOneBall();
    void shootTwoBalls();
    void driveAndShootTwo();
+   void balance();
+   void newBalance();
 
    /************************ Data Sending *************************************/
    // Send data to the dashboard

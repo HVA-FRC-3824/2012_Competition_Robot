@@ -34,6 +34,8 @@ MyRobot::MyRobot(void)
    m_buttonBox = new Joystick(BUTTON_BOX_PORT);
    m_ferrisWheelStop = new DigitalInput(FERRIS_WHEEL_STOP_PORT);
    m_bottomSlot = new DigitalInput(BOTTOM_SLOT_DETECTOR_PORT);
+   m_frontBridgeWheelLimit = new DigitalInput(FRONT_BRIDGE_WHEEL_LIMIT);
+   m_backBridgeWheelLimit = new DigitalInput(BACK_BRIDGE_WHEEL_LIMIT);
    m_gyroHorizontal = new Gyro(GYRO_HORIZONTAL_PORT);
    m_gyroVertical = new Gyro(GYRO_VERTICAL_PORT);
    m_driverStation = DriverStation::GetInstance();
@@ -44,8 +46,7 @@ MyRobot::MyRobot(void)
 
    // PID controller for the gyro angles
    m_pidOutput = new HVA_PIDOutput(&m_rotation);
-   m_turnController = new HVA_PIDController(
-         TURN_CONTROLLER_P, // P
+   m_turnController = new HVA_PIDController(TURN_CONTROLLER_P, // P
          TURN_CONTROLLER_I, // I
          TURN_CONTROLLER_D, // D
          m_gyroHorizontal, // source
@@ -152,7 +153,6 @@ void MyRobot::OperatorControl(void)
       /**************************************************************************/
 
       printf("Faults (r,l) %x, %x\n", m_rightMotor->GetFaults(), m_leftMotor->GetFaults());
-      
       // Send data to the dashboard
       sendDashboardData();
 
@@ -170,75 +170,75 @@ void MyRobot::readOperatorControls()
    static bool previousSwitchValue = false; // The previous value of the ferris wheel switch
 
    /******************** Adjust the turn PID *********************************/
-//   static float buttonPressedPID = false;
-//
-//   // Increment the value of P
-//   if ((m_buttonBox->GetRawButton(P_INCREMENT) == false) && (buttonPressedPID
-//         == false))
-//   {
-//      buttonPressedPID = true;
-//      m_shooterRotate->SetPID(m_shooterRotate->GetP() * PID_CHANGE_VALUE,
-//            m_shooterRotate->GetI(), m_shooterRotate->GetD());
-//   }
-//
-//   // Decrement the value of P
-//   else if ((m_buttonBox->GetRawButton(P_DECREMENT) == false)
-//         && (buttonPressedPID == false))
-//   {
-//      buttonPressedPID = true;
-//      m_shooterRotate->SetPID(m_shooterRotate->GetP() / PID_CHANGE_VALUE,
-//            m_shooterRotate->GetI(), m_shooterRotate->GetD());
-//   }
-//
-//   // Increment the value of I
-//   else if ((m_buttonBox->GetRawButton(I_INCREMENT) == true)
-//         && (buttonPressedPID == true))
-//   {
-//      buttonPressedPID = false;
-//      m_shooterRotate->SetPID(m_shooterRotate->GetP(),
-//            m_shooterRotate ->GetI() * PID_CHANGE_VALUE,
-//            m_shooterRotate->GetD());
-//   }
-//
-//   // Decrement the value of I
-//   else if ((m_buttonBox->GetRawButton(I_DECREMENT) == true)
-//         && (buttonPressedPID == true))
-//   {
-//      buttonPressedPID = false;
-//      m_shooterRotate->SetPID(m_shooterRotate->GetP(),
-//            m_shooterRotate ->GetI() / PID_CHANGE_VALUE,
-//            m_shooterRotate->GetD());
-//   }
-//
-//   // Increment the value of D
-//   else if ((m_buttonBox->GetRawButton(D_INCREMENT) == true)
-//         && (buttonPressedPID == true))
-//   {
-//      buttonPressedPID = false;
-//      m_shooterRotate->SetPID(m_shooterRotate->GetP(),
-//            m_shooterRotate ->GetI(),
-//            m_shooterRotate->GetD() * PID_CHANGE_VALUE);
-//   }
-//
-//   // Decrement the value of D
-//   else if ((m_buttonBox->GetRawButton(D_DECREMENT) == true)
-//         && (buttonPressedPID == true))
-//   {
-//      buttonPressedPID = false;
-//      m_shooterRotate->SetPID(m_shooterRotate->GetP(),
-//            m_shooterRotate ->GetI(),
-//            m_shooterRotate->GetD() / PID_CHANGE_VALUE);
-//   }
-//   // Check to see if no buttons are pushed
-//   else if ((m_buttonBox->GetRawButton(P_INCREMENT) != false)
-//         && (m_buttonBox->GetRawButton(P_DECREMENT) != false)
-//         && (m_buttonBox->GetRawButton(I_INCREMENT) != true)
-//         && (m_buttonBox->GetRawButton(I_DECREMENT) != true)
-//         && (m_buttonBox->GetRawButton(D_INCREMENT) != true)
-//         && (m_buttonBox->GetRawButton(D_DECREMENT) != true))
-//   {
-//      buttonPressedPID = false;
-//   }
+   //   static float buttonPressedPID = false;
+   //
+   //   // Increment the value of P
+   //   if ((m_buttonBox->GetRawButton(P_INCREMENT) == false) && (buttonPressedPID
+   //         == false))
+   //   {
+   //      buttonPressedPID = true;
+   //      m_shooterRotate->SetPID(m_shooterRotate->GetP() * PID_CHANGE_VALUE,
+   //            m_shooterRotate->GetI(), m_shooterRotate->GetD());
+   //   }
+   //
+   //   // Decrement the value of P
+   //   else if ((m_buttonBox->GetRawButton(P_DECREMENT) == false)
+   //         && (buttonPressedPID == false))
+   //   {
+   //      buttonPressedPID = true;
+   //      m_shooterRotate->SetPID(m_shooterRotate->GetP() / PID_CHANGE_VALUE,
+   //            m_shooterRotate->GetI(), m_shooterRotate->GetD());
+   //   }
+   //
+   //   // Increment the value of I
+   //   else if ((m_buttonBox->GetRawButton(I_INCREMENT) == true)
+   //         && (buttonPressedPID == true))
+   //   {
+   //      buttonPressedPID = false;
+   //      m_shooterRotate->SetPID(m_shooterRotate->GetP(),
+   //            m_shooterRotate ->GetI() * PID_CHANGE_VALUE,
+   //            m_shooterRotate->GetD());
+   //   }
+   //
+   //   // Decrement the value of I
+   //   else if ((m_buttonBox->GetRawButton(I_DECREMENT) == true)
+   //         && (buttonPressedPID == true))
+   //   {
+   //      buttonPressedPID = false;
+   //      m_shooterRotate->SetPID(m_shooterRotate->GetP(),
+   //            m_shooterRotate ->GetI() / PID_CHANGE_VALUE,
+   //            m_shooterRotate->GetD());
+   //   }
+   //
+   //   // Increment the value of D
+   //   else if ((m_buttonBox->GetRawButton(D_INCREMENT) == true)
+   //         && (buttonPressedPID == true))
+   //   {
+   //      buttonPressedPID = false;
+   //      m_shooterRotate->SetPID(m_shooterRotate->GetP(),
+   //            m_shooterRotate ->GetI(),
+   //            m_shooterRotate->GetD() * PID_CHANGE_VALUE);
+   //   }
+   //
+   //   // Decrement the value of D
+   //   else if ((m_buttonBox->GetRawButton(D_DECREMENT) == true)
+   //         && (buttonPressedPID == true))
+   //   {
+   //      buttonPressedPID = false;
+   //      m_shooterRotate->SetPID(m_shooterRotate->GetP(),
+   //            m_shooterRotate ->GetI(),
+   //            m_shooterRotate->GetD() / PID_CHANGE_VALUE);
+   //   }
+   //   // Check to see if no buttons are pushed
+   //   else if ((m_buttonBox->GetRawButton(P_INCREMENT) != false)
+   //         && (m_buttonBox->GetRawButton(P_DECREMENT) != false)
+   //         && (m_buttonBox->GetRawButton(I_INCREMENT) != true)
+   //         && (m_buttonBox->GetRawButton(I_DECREMENT) != true)
+   //         && (m_buttonBox->GetRawButton(D_INCREMENT) != true)
+   //         && (m_buttonBox->GetRawButton(D_DECREMENT) != true))
+   //   {
+   //      buttonPressedPID = false;
+   //   }
 
    /************************ Control the Drive Mode ***************************/
    if (m_joystick->GetRawButton(DRIVE_WITH_VELOCITY) == true)
@@ -274,7 +274,8 @@ void MyRobot::readOperatorControls()
       else
       {
          m_robotDrive->ArcadeVelocityDriveStepped(
-               m_joystick->GetAxis(Joystick::kYAxis), m_rotation, MAX_ACCELERATION_ARCADE);
+               m_joystick->GetAxis(Joystick::kYAxis), m_rotation,
+               MAX_ACCELERATION_ARCADE);
       }
    }
    // Run the rotation off the joystick
@@ -326,11 +327,11 @@ void MyRobot::readOperatorControls()
    }
 
    // if button 8 is pushed then run the ball pickerupper to spit balls
-//   else if (m_joystick->GetRawButton(REVERSE_BALL_PICKUP) == true)
-//   {
-//      m_frontBallPickup->Set(1.0f);
-//      m_backBallPickup->Set(1.0f);
-//   }
+   //   else if (m_joystick->GetRawButton(REVERSE_BALL_PICKUP) == true)
+   //   {
+   //      m_frontBallPickup->Set(1.0f);
+   //      m_backBallPickup->Set(1.0f);
+   //   }
 
    /************************ Ferris Wheel *************************************/
    // Check limit switch and only stop the wheel if the switch is newly pressed
@@ -341,42 +342,41 @@ void MyRobot::readOperatorControls()
       m_ferrisWheel->Set(-FERRIS_ROTATE_SPEED);
    else
       m_ferrisWheel->Set(0.0f);
-   
-   
+
    // </Test>
-//   if (m_ferrisWheelStop->Get() == true && previousSwitchValue == false)
-//   {
-//      ferrisRotate = false;
-//      previousSwitchValue = true;
-//   }
-//
-//   // check to see if the switch is released
-//   else if (m_ferrisWheelStop->Get() == false)
-//   {
-//      previousSwitchValue = false;
-//   }
-//
-//   // If button 9 is pushed, the ferris wheel moves forward
-//   if (m_joystick->GetRawButton(START_FERRIS_WHEEL) == true)
-//   {
-//      m_ferrisWheel->Set(FERRIS_ROTATE_SPEED);
-//      ferrisRotate = true;
-//   }
-//
-//   // If button 10 is pushed, the ferris wheel will stop and drive backwards
-//   else if (m_joystick->GetRawButton(REVERSE_FERRIS_WHEEL) == true)
-//   {
-//      m_ferrisWheel->Set(-FERRIS_ROTATE_SPEED);
-//      ferrisRotate = false;
-//   }
-//   else if (ferrisRotate == true)
-//   {
-//      m_ferrisWheel->Set(FERRIS_ROTATE_SPEED);
-//   }
-//   else
-//   {
-//      m_ferrisWheel->Set(0.0f);
-//   }
+   //   if (m_ferrisWheelStop->Get() == true && previousSwitchValue == false)
+   //   {
+   //      ferrisRotate = false;
+   //      previousSwitchValue = true;
+   //   }
+   //
+   //   // check to see if the switch is released
+   //   else if (m_ferrisWheelStop->Get() == false)
+   //   {
+   //      previousSwitchValue = false;
+   //   }
+   //
+   //   // If button 9 is pushed, the ferris wheel moves forward
+   //   if (m_joystick->GetRawButton(START_FERRIS_WHEEL) == true)
+   //   {
+   //      m_ferrisWheel->Set(FERRIS_ROTATE_SPEED);
+   //      ferrisRotate = true;
+   //   }
+   //
+   //   // If button 10 is pushed, the ferris wheel will stop and drive backwards
+   //   else if (m_joystick->GetRawButton(REVERSE_FERRIS_WHEEL) == true)
+   //   {
+   //      m_ferrisWheel->Set(-FERRIS_ROTATE_SPEED);
+   //      ferrisRotate = false;
+   //   }
+   //   else if (ferrisRotate == true)
+   //   {
+   //      m_ferrisWheel->Set(FERRIS_ROTATE_SPEED);
+   //   }
+   //   else
+   //   {
+   //      m_ferrisWheel->Set(0.0f);
+   //   }
 
    /************************ RUN Shooter Turn *********************************/
    if (m_driverStation->GetDigitalIn(AUTONOMOUSLY_RUN_SHOOTER) == 1)
@@ -406,15 +406,23 @@ void MyRobot::readOperatorControls()
  */
 void MyRobot::runStabilityWheels()
 {
+   printf("Front Switch: %i\n", m_frontBridgeWheelLimit->Get());
+   printf("Back Switch: %i\n", m_backBridgeWheelLimit->Get());
    switch (stabilityWheelState)
    {
    case kFrontDeployed:
-      m_frontBridgeWheel->Set(DoubleSolenoid::kForward);
+      if (m_backBridgeWheelLimit->Get() == true)
+      {
+         m_frontBridgeWheel->Set(DoubleSolenoid::kForward);
+      }
       m_backBridgeWheel->Set(DoubleSolenoid::kReverse);
       break;
    case kBackDeployed:
       m_frontBridgeWheel->Set(DoubleSolenoid::kReverse);
-      m_backBridgeWheel->Set(DoubleSolenoid::kForward);
+      if (m_frontBridgeWheelLimit->Get() == true)
+      {
+         m_backBridgeWheel->Set(DoubleSolenoid::kForward);
+      }
       break;
    case kNeitherDeployed:
       m_frontBridgeWheel->Set(DoubleSolenoid::kReverse);
@@ -457,7 +465,7 @@ void MyRobot::SetStabilityWheelState()
       m_gyroVertical->Reset();
       newChange = true;
    }
-   
+
    // Set the previous switch state equall to the current switch state
    previousStabilitySwitchState = currentStabilitySwitchState;
 
@@ -550,8 +558,8 @@ void MyRobot::setDriveModeToVelocity(void)
    m_leftMotor->ChangeControlMode(CANJaguar::kSpeed);
    m_rightMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
    m_leftMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
-   m_rightMotor->SetPID(MOTOR_P, MOTOR_I, MOTOR_D);
-   m_leftMotor->SetPID(MOTOR_P, MOTOR_I, MOTOR_D);
+   m_rightMotor->SetPID(MOTOR_VELOCITY_P, MOTOR_VELOCITY_I, MOTOR_VELOCITY_D);
+   m_leftMotor->SetPID(MOTOR_VELOCITY_P, MOTOR_VELOCITY_I, MOTOR_VELOCITY_D);
    m_robotDrive->SetMaxOutput(MAX_SPEED_VELOCITY);
    m_rightMotor->EnableControl();
    m_leftMotor->EnableControl();
@@ -581,8 +589,7 @@ void MyRobot::sendDashboardData()
    // send IO data to the DriverStation
    m_dashboardDataFormat->SendLCDData(heightOfTriangle,
          m_rightMotor->GetSpeed(), m_leftMotor->GetSpeed(),
-         m_rightMotor->Get(), m_leftMotor->Get(), 0.0,
-         0.0, 0.0,
+         m_rightMotor->Get(), m_leftMotor->Get(), 0.0, 0.0, 0.0,
          m_shooterWheel->Get());
    m_dashboardDataFormat->SendIOPortData();
    m_dashboardDataFormat->SendVisionData();
