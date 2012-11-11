@@ -377,7 +377,9 @@ static int IVA_Particle(Image* image, int connectivity,
       GetSmallestScoreIndex(results, &resultIndex, &minScore);
 
       // Score is best at 100 and decresses the further the object is from the goal.
-      aspectScore = 100 - fabs(100 - (((boundingRectWidth / boundingRectHeight)
+      aspectScore = 100 - fabs(
+            100
+                  - (((boundingRectWidth / boundingRectHeight)
                         / TARGET_RATIO)) * 100);
 
       //printf("score %f\n", score);

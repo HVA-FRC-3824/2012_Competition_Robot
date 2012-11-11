@@ -292,7 +292,7 @@ void MyRobot::autonomouslyDriveShooter(int targetStatus,
    }
 
    // Only run the rotation of the shooter if the mode is Autonomous
-   if (shooterRotationControlState == kAutonomous)
+   if (m_shooterRotationControlState == kAutonomous)
    {
       // Set the Rotational value for the shooter
       double rotationValue = m_shooterRotate->GetPosition() + valueToRotate;// + PIXEL_OFFSET;

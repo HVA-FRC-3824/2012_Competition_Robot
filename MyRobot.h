@@ -48,6 +48,8 @@
 #define BOTTOM_SLOT_DETECTOR_PORT          			4
 #define FRONT_BRIDGE_WHEEL_LIMIT           			5
 #define BACK_BRIDGE_WHEEL_LIMIT            			7
+#define ULTRASONIC_PING_OUTPUT                     8
+#define ULTRASONIC_ECHO_INPUT                      9
 
 /* Relay PORT Defines */
 #define COMPRESSOR_RELAY                   			1
@@ -106,11 +108,11 @@
 #define MAX_VELOCITY                     		  600.0
 #define MAX_CURRENT                      		  40
 #define BALL_PICKUP_SPEED                      1.0f
-#define MIN_SHOOTER_SPEED_PERCENT              0.3f
+//#define MIN_SHOOTER_SPEED_PERCENT              0.3f
+#define MIN_SHOOTER_SPEED_PERCENT              0.0f
 #define MAX_SHOOTER_SPEED_PERCENT              1.0f
 #define MAX_ROBOT_VOLTAGE                      12
-//#define DEFAULT_AUTONOMOUS_VOLTAGE             6.8
-#define DEFAULT_AUTONOMOUS_VOLTAGE             4.6
+#define DEFAULT_AUTONOMOUS_VOLTAGE             7.0
 #define MIN_SHOOTER_VOLTAGE_AUTONOMOUS         6.0
 #define MAX_SHOOTER_VOLTAGE_AUTONOMOUS         7.75
 
@@ -149,6 +151,8 @@
 
 #define MAX_SHOOTER_VOLTAGE_ADJUSTMENT         1.0
 
+#define TIME_TILL_INTERRUPT_ENABLE              .5
+
 /******************************************************************************/
 
 enum ThreeWaySwitchState
@@ -170,15 +174,15 @@ private:
    enum
    {
       kVelocity, kPercentage, kCurrent
-   } driveSetting;
+   } m_driveSetting;
 
-   enum
+   enum FerrisState
    {
       kForward, kBackward, kStop
-   } ferrisState;
+   } m_ferrisState;
 
-   StabilityWheelState stabilityWheelState;
-   ControlState shooterRotationControlState;
+   StabilityWheelState m_stabilityWheelState;
+   ControlState m_shooterRotationControlState;
 
    DashboardDataFormat *m_dashboardDataFormat; // object to send data to the Driver station
    CANJaguar *m_rightMotor; // Right drive motor
@@ -196,12 +200,14 @@ private:
    DoubleSolenoid *m_ballLiftSolenoid; // Ball lift
    DoubleSolenoid *m_frontBridgeWheel; // Front stability wheel
    DoubleSolenoid *m_backBridgeWheel; // Back stability wheel
+   Ultrasonic *m_ultrasonic;
    Joystick *m_joystick; // Only joystick
    Joystick *m_buttonBox; // Box of Buttons
    DigitalInput *m_ferrisWheelStop; // Ferris wheel limit switch
    DigitalInput *m_bottomSlot; // Bottom slot photo gate
    DigitalInput *m_frontBridgeWheelLimit;// Limit switch used to see if the arm is up
    DigitalInput *m_backBridgeWheelLimit; // Limit switch used to see if the arm is up
+   tInterruptHandler *handler;
    Gyro *m_gyroHorizontal; // Horizontally mounted gyro
    Gyro *m_gyroVertical; // Vertically mounted gyro
    Ultrasonic *ultra; // The ultra sonic sensor
@@ -219,21 +225,29 @@ private:
    // Array to hold the targets from the camera
    double results[NUMBER_OF_TARGETS][NUMBER_OF_TARGET_PARAMETERS];
 
+public:
+   static void ferrisHandler(uint32_t mask, void *param)
+   {
+      MyRobot *robot = (MyRobot*)param;
+      robot->runFerrisWheel(kStop);
+      robot->m_ferrisWheelStop->DisableInterrupts();
+   }
+private:
    /************************ Basic Robot Control ******************************/
    // Read the buttons of the controllers and respond accordenlly
    void readOperatorControls(void);
 
    // Run the ferrisWheel off of the robot state
-   void runFerrisWheel(void);
+   void runFerrisWheel(FerrisState state);
 
    // Determin the state the ferris wheel should be in.
-   void setFerrisWheelState(void);
+   void runFerrisWheelFromControls(void);
 
    // Control Drive the Stability Wheels to match the state
-   void runStabilityWheels(void);
+   void runStabilityWheels(StabilityWheelState state);
 
    // Determine the state the wheels need to be in
-   void setStabilityWheelState(void);
+   void runStabilityWheelStateFromControls(void);
 
    // Determine the state according to the gyro
    int getStabilityStateFromGyro(void);
@@ -272,6 +286,7 @@ private:
          double voltageToDriveShooter, double valueToRotate);
 
    /************************ Autonomous Moves *********************************/
+   void driveToShootingPosition();
    void driveStraightForDistance();
    void driveStraightForDistanceCurrent();
    void shootOneBall();
