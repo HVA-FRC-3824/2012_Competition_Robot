@@ -2,11 +2,20 @@
 #define __MyRobot_h__
 
 #include "WPILib.h"
-#include <Math.h>
 #include "DashboardDataFormat.h"
 #include "ImageProcessing.h"
 #include "HVA_PIDController.h"
 #include "HVA_PIDOutput.cpp"
+#include "HVA_RobotDrive.h"
+
+/**
+ * History:
+ *    Custom 1 - First custom made before season.
+ *    Custom 2 - First custom for the season. Contorls componates manually
+ *    Custom 3 - Added camera tracking and camera shooter control
+ *    Custom 4 - Added camera task and automomous modes
+ *    Custom 5 - Added ramp control and velocity controls to the library
+ */
 
 /*************************** Robot Defines ************************************/
 /* Jaguar ID Defines */
@@ -67,16 +76,19 @@
 #define I_DECREMENT                      7
 #define D_INCREMENT                      3
 #define D_DECREMENT                      5
-#define BRIDGE_ASSIST                      // todo find the value for the switch
 
 /* Cypris Button Defines */
 #define MINIBOT_PORT                     4
 #define AUTO_STRAIGHT                    7
+#define BRIDGE_ASSIST                    5
+#define DEPLOY_WHEELS                    2
 
 /******************************************************************************/
 class MyRobot: public SimpleRobot
 {
 private:
+   enum {kVelocity, kPercentage} driveSetting;
+   
    DashboardDataFormat *m_dashboardDataFormat; // object to send data to the Driver station
    CANJaguar           *m_rightMotor;          // Jaguar motor controllers
    CANJaguar           *m_leftMotor;
@@ -85,7 +97,7 @@ private:
    Victor              *m_frontBallPickup;
    Victor              *m_backBallPickup;
    Victor              *m_ferrisWheel;
-   RobotDrive          *m_robotDrive;          // robot drive system
+   HVA_RobotDrive      *m_robotDrive;          // robot drive system
    Compressor          *m_compressor;
    DoubleSolenoid      *m_ballLiftSolenoid;
    DoubleSolenoid      *m_frontBridgeWheel;
@@ -100,7 +112,6 @@ private:
    DriverStation       *m_driverStation;
    HVA_PIDOutput       *m_pidOutput;           // object that handles the output of the PID controller
    HVA_PIDController   *m_turnController;      // PID controller used the turn the robot to a given heading
-   Task                *m_cameraChecker;
    double               heightOfTriangle;
    float                m_rotation;            // rotation to drive
    bool                 readyToFire;
@@ -108,12 +119,14 @@ private:
    // Array to hold the targets from the camera
    double results[NUMBER_OF_TARGETS][NUMBER_OF_TARGET_PARAMETERS];
 
-   void startTracking(void);
-   
-   void stopTracking(void);
+   // Read and process image and control shooter
+   bool cameraControl(void);
 
+   // Control the anti tip wheels
+   void runTipAvoidence(void);
+   
    // Read the buttons of the controllers and respond accordenlly
-   void readOperatorControls();
+   void readOperatorControls(void);
 
    // Process the camera images
    int readCamera(double &heightOfTriangle, double &distanceToTarget,
@@ -124,10 +137,7 @@ private:
 
    // Sort the target array
    void sortTargetArray(double targets[NUMBER_OF_TARGETS][NUMBER_OF_TARGET_PARAMETERS]);
-   
-   // Shoot two balls in autonomous mode
-   void shootTwoBalls();
-   
+
    // Send data to the dashboard
    void sendDashboardData();
 
@@ -139,9 +149,6 @@ public:
 
    // Runs the motors with arcade steering.
    void OperatorControl(void);
-   
-   // Read and process image and control shooter
-   bool CameraControl(void);
 };
 
 #endif

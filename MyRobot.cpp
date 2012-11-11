@@ -9,6 +9,7 @@
 #define NUMBER_OF_ENCODER_LINES         1440
 #define NUMBER_OF_ENCODER_LINES_MOTORS   720
 #define PID_CHANGE_VALUE                   2
+#define TIPPED_THRESHOLD                10.0 // TODO: Determine if value is right.
 
 /************************** Power Defines *************************************/
 #define SHOOTER_ROTATE_SPEED             0.4f
@@ -23,12 +24,6 @@
 #define TURN_CONTROLLER_PERIOD           0.005
 /******************************************************************************/
 
-static void cameraChecker(MyRobot *robot)
-{
-   printf("In camera tracker\n");
-   robot->CameraControl();
-}
-
 MyRobot::MyRobot(void)
 {
    m_dashboardDataFormat = new DashboardDataFormat();
@@ -39,19 +34,18 @@ MyRobot::MyRobot(void)
    m_ferrisWheel         = new Victor(FERRIS_WHEEL_MOTOR);
    m_frontBallPickup     = new Victor(FRONT_BALL_PICKUP_MOTOR);
    m_backBallPickup      = new Victor(BACK_BALL_PICKUP_MOTOR);
-   m_robotDrive          = new RobotDrive(m_leftMotor, m_rightMotor); // create a robot drive system with four moters
+   m_robotDrive          = new HVA_RobotDrive(m_leftMotor, m_rightMotor); // create a robot drive system with four moters
    m_compressor          = new Compressor(COMPRESSOR_SENSOR, COMPRESSOR_RELAY);
    m_ballLiftSolenoid    = new DoubleSolenoid(BALL_LIFT_FORWARD, BALL_LIFT_REVERSED);
    m_frontBridgeWheel    = new DoubleSolenoid(FRONT_BRIDGE_WHEEL_FORWARD, FRONT_BRIDGE_WHEEL_REVERSE);
-   m_frontBridgeWheel    = new DoubleSolenoid(BACK_BRIDGE_WHEEL_FORWARD, BACK_BRIDGE_WHEEL_REVERSE);
+   m_backBridgeWheel     = new DoubleSolenoid(BACK_BRIDGE_WHEEL_FORWARD, BACK_BRIDGE_WHEEL_REVERSE);
    m_joystick            = new Joystick(JOYSTICK_PORT); // as they are declared above.
    m_buttonBox           = new Joystick(BUTTON_BOX_PORT);
    m_ferrisWheelStop     = new DigitalInput(FERRIS_WHEEL_STOP_PORT);
    m_bottomSlot          = new DigitalInput(BOTTOM_SLOT_DETECTOR_PORT);
    m_gyroHorizontal      = new Gyro(GYRO_HORIZONTAL_PORT);
    m_gyroVerticall       = new Gyro(GYRO_VERTICAL_PORT);
-   m_cameraChecker       = new Task("Camera", (FUNCPTR)cameraChecker, 9000);
-
+   driveSetting          = kPercentage;
    m_driverStation       = DriverStation::GetInstance();
    AxisCamera &camera    = AxisCamera::GetInstance();
 
@@ -92,7 +86,7 @@ MyRobot::MyRobot(void)
    m_shooterRotate->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
 
    // Reverse neither drive motor
-   m_robotDrive->SetInvertedMotor(RobotDrive::kRearLeftMotor, false);
+   m_robotDrive->SetInvertedMotor(RobotDrive::kRearLeftMotor, true);
    m_robotDrive->SetInvertedMotor(RobotDrive::kRearRightMotor, false);
 
    // Set the max speed for the robot
@@ -112,8 +106,6 @@ MyRobot::MyRobot(void)
    // Set the expiration for the watchdog
    m_robotDrive->SetExpiration(10.0);
    m_robotDrive->SetSafetyEnabled(false);
-   GetWatchdog().SetExpiration(10.0);
-   GetWatchdog().SetEnabled(false);
    /**************************************************************************/
 
    /******************************* Run **************************************/
@@ -127,28 +119,15 @@ MyRobot::MyRobot(void)
 void MyRobot::Autonomous(void)
 {
    // Enable the jaguars
-   m_rightMotor->EnableControl();
-   m_leftMotor->EnableControl();
-   m_shooterRotate->EnableControl();
-   m_shooterWheel->EnableControl();
+//   m_rightMotor->EnableControl();
+//   m_leftMotor->EnableControl();
+//   m_shooterRotate->EnableControl();
+//   m_shooterWheel->EnableControl();
 
-   startTracking();
-   
    while (IsAutonomous())
    {
-      printf("Ready to Fire:%i\n", readyToFire);
+      printf("%f\n", Timer::GetFPGATimestamp());
    }
-}
-
-void MyRobot::shootTwoBalls()
-{  
-      bool readyToFire;
-      
-      do 
-      {
-        readyToFire = CameraControl();
-   
-      }while(readyToFire == false);
 }
 
 /**
@@ -166,14 +145,17 @@ void MyRobot::OperatorControl(void)
    while (IsOperatorControl())
    {
       // Read and process image and control shooter
-      CameraControl();
+      cameraControl();
 
       // Read the operator controls
       readOperatorControls();
 
       /************Debug Printouts **********************************************/
       printf("Height of the Triagle: %f\n", heightOfTriangle);
-      printf("Voltage: %f\n\n", m_shooterWheel->Get());
+      printf("Voltage: %f\n", m_shooterWheel->Get());
+      printf("Motor Value: %f\n", m_rightMotor->Get());
+      printf("Motor Velocity: %f\n", m_rightMotor->GetSpeed());
+      printf("Motor Position: %f\n", m_rightMotor->GetPosition());
       // printf("Right Motor: %f, Left Motor: %f\n", m_rightMotor->Get(),
       //         m_leftMotor->Get());
       // printf("Shooter Wheel: %f, Shooter Rotate: %f\n",
@@ -281,9 +263,15 @@ void MyRobot::readOperatorControls()
       m_turnController->SetSetpoint(m_turnController->GetSetpoint() + m_joystick->GetThrottle());
 
       // drive the robot using Arcade drive
+      if (driveSetting == kPercentage)
+      {
       m_robotDrive->ArcadeDrive(m_joystick->GetAxis(Joystick::kYAxis), m_rotation);
+      }
+      else
+      {
+         m_robotDrive->ArcadeVelocityDriveStepped(m_joystick->GetAxis(Joystick::kYAxis), m_rotation);
+      }
    }
-
    // Run the rotation off the joystick
    else
    {
@@ -293,11 +281,31 @@ void MyRobot::readOperatorControls()
       }
 
       // drive the robot using Arcade drive
+      if (driveSetting == kPercentage)
+      {
       m_robotDrive->ArcadeDrive(m_joystick->GetAxis(Joystick::kYAxis),
                                 m_joystick->GetThrottle() * ROTATE_REDUCE_FACTOR);
+      }
+      else
+      {
+         m_robotDrive->ArcadeVelocityDriveStepped(m_joystick->GetAxis(Joystick::kYAxis),
+                                   m_joystick->GetThrottle() * ROTATE_REDUCE_FACTOR);
+      }
+   }
+   
+   /************ Run Stability Wheels *****************************************/
+   if (m_driverStation->GetDigitalIn(DEPLOY_WHEELS) == true)
+   {
+      m_frontBridgeWheel->Set(DoubleSolenoid::kForward);
+      m_backBridgeWheel->Set(DoubleSolenoid::kForward);
+   }
+   else
+   {
+      m_frontBridgeWheel->Set(DoubleSolenoid::kReverse);
+      m_backBridgeWheel->Set(DoubleSolenoid::kReverse);
    }
 
-   /************ RUN ShootingWheel *******************************************/
+   /************ RUN ShootingWheel ********************************************/
    if (m_driverStation->GetDigitalIn(MINIBOT_PORT) == 1)
    {
       m_shooterWheel->Set((m_joystick->GetTwist() + 1) * 0.5f);
@@ -387,21 +395,23 @@ void MyRobot::readOperatorControls()
    }
    /**************************************************************************/
 
-   // if (m_joystick->GetRawButton(DRIVE_WITH_VELOCITY) == true)
-   // {
-   //    m_rightMotor->ChangeControlMode(CANJaguar::kSpeed);
-   //    m_leftMotor->ChangeControlMode(CANJaguar::kSpeed);
-   //    m_rightMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
-   //    m_leftMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
-   //    m_rightMotor->SetPID(0.01, 0.01, 0.0);
-   //    m_leftMotor->SetPID(0.01, 0.01, 0.0);
-   //    m_robotDrive->SetMaxOutput(300);
-   //    m_rightMotor->EnableControl();
-   //    m_leftMotor->EnableControl();
-   // }
+    if (m_joystick->GetRawButton(DRIVE_WITH_VELOCITY) == true)
+    {
+       driveSetting = kVelocity;
+       m_rightMotor->ChangeControlMode(CANJaguar::kSpeed);
+       m_leftMotor->ChangeControlMode(CANJaguar::kSpeed);
+       m_rightMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+       m_leftMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
+       m_rightMotor->SetPID(0.01, 0.01, 0.0);
+       m_leftMotor->SetPID(0.01, 0.01, 0.0);
+       m_robotDrive->SetMaxOutput(600);
+       m_rightMotor->EnableControl();
+       m_leftMotor->EnableControl();
+    }
 
    if (m_joystick->GetRawButton(DRIVE_WITH_VOLTAGE) == true)
    {
+      driveSetting = kPercentage;
       m_rightMotor->ChangeControlMode(CANJaguar::kPercentVbus);
       m_leftMotor->ChangeControlMode(CANJaguar::kPercentVbus);
       m_rightMotor->ConfigNeutralMode(CANJaguar::kNeutralMode_Coast);
@@ -416,6 +426,53 @@ void MyRobot::readOperatorControls()
    //
    // if (m_leftMotor->GetFaults() != 0)
    //    printf("Left Fault: %i", m_leftMotor->GetFaults());
+}
+
+/**
+ * Routine to make sure the robot does not tip on the bridge
+ */
+void MyRobot::runTipAvoidence()
+{
+   static bool tipAvoidenceOn = false;
+   
+   // Run the tip avoidence if the switch is flipped.
+   if (m_driverStation->GetDigitalIn(BRIDGE_ASSIST) == true)
+   {
+      // Turn on the tip avoidence
+      if(tipAvoidenceOn == false)
+      {
+         m_gyroVerticall->Reset();
+         tipAvoidenceOn = true;
+      }
+      
+      // Run the tip avoidence
+      if (m_gyroVerticall->GetAngle() < -TIPPED_THRESHOLD)
+      {
+         m_frontBridgeWheel->Set(DoubleSolenoid::kForward);
+         m_backBridgeWheel->Set(DoubleSolenoid::kReverse);
+      }
+      if (m_gyroVerticall->GetAngle() > TIPPED_THRESHOLD)
+      {
+         m_frontBridgeWheel->Set(DoubleSolenoid::kReverse);
+         m_backBridgeWheel->Set(DoubleSolenoid::kForward);
+      }
+      else
+      {
+         m_frontBridgeWheel->Set(DoubleSolenoid::kReverse);
+         m_backBridgeWheel->Set(DoubleSolenoid::kReverse);
+      }
+      
+   }
+   // Turn off the tip avoidence
+   else
+   {
+      if(tipAvoidenceOn == true)
+      {
+         tipAvoidenceOn = false;
+         m_frontBridgeWheel->Set(DoubleSolenoid::kReverse);
+         m_backBridgeWheel->Set(DoubleSolenoid::kReverse);
+      }
+   }
 }
 
 /**
