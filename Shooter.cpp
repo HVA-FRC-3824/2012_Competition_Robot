@@ -302,8 +302,10 @@ int MyRobot::readCamera(double &heightOfTriangle, double &distanceToTarget,
                               / 2.0), 2.0));
 
       // Make sure there are targets before changing voltage
+      // Do not calculate the velocity to drive the shooter if the override mode
+      // switch is up
       // TODO - add code to drive shooter off of the ultrasonic sensor.
-      if (targetStatus == 0)
+      if (targetStatus == 0 && m_driverStationEnhancedIO->GetDigital(SHOOTER_WHEEL_OVERRIDE_MODE) == false)
       {
          // calculate the voltage of the shooter
          voltageToDriveShooter = (-0.00001894 * pow(heightOfTriangle, 3))
@@ -330,7 +332,7 @@ int MyRobot::readCamera(double &heightOfTriangle, double &distanceToTarget,
 
    // Calculate the value to rotate the shooter to.
    // TODO - Possibly add in tracking
-   if (targetStatus == 0)
+   if (targetStatus == 0 || targetStatus == 1)
    {
       // Only Calculate pixel off if targets are found
       pixelOff = ((results[TOP_TARGET][CENTER_OF_MASS_X_INDEX] + PIXEL_OFFSET)

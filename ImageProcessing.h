@@ -35,6 +35,6 @@
 #include "WPILib.h"
 
 int IVA_ProcessImage(Image *image,
-        double results[NUMBER_OF_TARGETS][NUMBER_OF_TARGET_PARAMETERS]);
+      double results[NUMBER_OF_TARGETS][NUMBER_OF_TARGET_PARAMETERS]);
 
 #endif // ifndef IMAGEPROCESSING_TASK_INCLUDE
