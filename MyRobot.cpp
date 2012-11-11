@@ -152,11 +152,11 @@ void MyRobot::OperatorControl(void)
       readOperatorControls();
 
       /************Debug Printouts **********************************************/
-      //printf("Position: %f\n", m_shooterRotate->GetPosition());
+      printf("Position: %f\n", m_shooterRotate->GetPosition());
       //printf("ShooterVoltage: %f\n",  ((((m_driverStationEnhancedIO->GetAnalogIn(SHOOTER_VELOCITY_POT)/MAX_POT_VALUE)*(MAX_SHOOTER_SPEED_PERCENT - MIN_SHOOTER_SPEED_PERCENT)) + MIN_SHOOTER_SPEED_PERCENT) * MAX_ROBOT_VOLTAGE));
       //printf("Position: %f\n", ((m_driverStationEnhancedIO->GetAnalogIn(SHOOTER_ROTATION_POT) - MID_POT_VALUE) * ((MAXIMUM_ROTATION_OF_SHOOTER)/(MAX_POT_VALUE-MID_POT_VALUE))));
       //printf("WheelOffSet: %f\n", ((m_driverStationEnhancedIO->GetAnalogIn(SHOOTER_VELOCITY_POT) - MID_POT_VALUE)*((MAX_SHOOTER_VOLTAGE_ADJUSTMENT)/(MAX_POT_VALUE - MID_POT_VALUE))));
-      
+
       //printf("Height of the Triagle: %f\n", heightOfTriangle);
       //printf("Voltage: %f\n", m_shooterWheel->Get());
       //printf("Motor Value: %f\n", m_rightMotor->Get());
@@ -174,10 +174,10 @@ void MyRobot::OperatorControl(void)
       // printf("Target Status: %i\n", targetStatus);
       /**************************************************************************/
 
-//      printf("Faults (r,l) %x, %x\n", m_rightMotor->GetFaults(),
-//            m_leftMotor->GetFaults());
+      //      printf("Faults (r,l) %x, %x\n", m_rightMotor->GetFaults(),
+      //            m_leftMotor->GetFaults());
       // Send data to the dashboard
-      
+
       printf("IO: %i\n\n", m_ferrisWheelStop->Get());
       sendDashboardData();
 
@@ -230,9 +230,10 @@ void MyRobot::readOperatorControls()
    // drive the shooter manually if the cammera tracking is disabled or the full override is called
    if (((m_driverStationEnhancedIO->GetDigital(AUTONOMOUSLY_RUN_SHOOTER)
          == false) && (m_driverStationEnhancedIO->GetDigital(
-               SHOOTER_WHEEL_OVERRIDE) == true)) || ((m_driverStationEnhancedIO->GetDigital(SHOOTER_WHEEL_OVERRIDE_MODE) == true)
-         && (m_driverStationEnhancedIO->GetDigital(SHOOTER_WHEEL_OVERRIDE)
-               == true)))
+         SHOOTER_WHEEL_OVERRIDE) == true))
+         || ((m_driverStationEnhancedIO->GetDigital(SHOOTER_WHEEL_OVERRIDE_MODE)
+               == true) && (m_driverStationEnhancedIO->GetDigital(
+               SHOOTER_WHEEL_OVERRIDE) == true)))
    {
       m_shooterWheel->Set(
             (((m_driverStationEnhancedIO->GetAnalogIn(SHOOTER_VELOCITY_POT)
@@ -275,12 +276,18 @@ void MyRobot::readOperatorControls()
 
    /************************ RUN Shooter Turn *********************************/
    // If the rotation is being driven by the operator then set the value equall to the pot
-   if (shooterRotationControlState == kTeleoperated)
+   if (shooterRotationControlState == kTeleoperated
+         && m_driverStationEnhancedIO->GetDigital(ROTATION_OVERRIDE) == true)
    {
       m_shooterRotate->Set(
             (m_driverStationEnhancedIO->GetAnalogIn(SHOOTER_ROTATION_POT)
                   - MID_POT_VALUE) * ((MAXIMUM_ROTATION_OF_SHOOTER)
                   / (MAX_POT_VALUE - MID_POT_VALUE)));
+   }
+   else if (shooterRotationControlState == kTeleoperated
+         && m_driverStationEnhancedIO->GetDigital(ROTATION_OVERRIDE) == false)
+   {
+      m_shooterRotate->Set(0.0f);
    }
 
    /************************ RUN Ball Shooter ********************************/
@@ -297,34 +304,15 @@ void MyRobot::readOperatorControls()
 /**
  * Run the ferrisWheel off of the robot state
  */
-#define TIME_TILL_SLOW 2.0
-#define SLOW_FERRIS    .3
 void MyRobot::runFerrisWheel(void)
 {
-
-   static FerrisState previousState = ferrisState;
-   static double StartStateTime = Timer::GetFPGATimestamp();
-   
-   if (previousState != ferrisState)
-   {
-      StartStateTime = Timer::GetFPGATimestamp();
-   }
-   
-   previousState = ferrisState;
-   
    switch (ferrisState)
    {
    case kForward:
-      if((Timer::GetFPGATimestamp() - StartStateTime) > TIME_TILL_SLOW)
-         m_ferrisWheel->Set(FERRIS_ROTATE_SPEED);
-      else
-         m_ferrisWheel->Set(SLOW_FERRIS);
+      m_ferrisWheel->Set(FERRIS_ROTATE_SPEED);
       break;
    case kBackward:
-      if((Timer::GetFPGATimestamp() - StartStateTime) > TIME_TILL_SLOW)
-         m_ferrisWheel->Set(-FERRIS_ROTATE_SPEED);
-      else
-         m_ferrisWheel->Set(-SLOW_FERRIS);
+      m_ferrisWheel->Set(-FERRIS_ROTATE_SPEED);
       break;
    case kStop:
       m_ferrisWheel->Set(0.0f);
@@ -597,10 +585,17 @@ void MyRobot::disableVelocityPID()
 void MyRobot::sendDashboardData()
 {
    // send IO data to the DriverStation
-   m_dashboardDataFormat->SendLCDData(heightOfTriangle,
-         m_rightMotor->GetSpeed(), m_leftMotor->GetSpeed(),
-         m_rightMotor->Get(), m_leftMotor->Get(), 0.0, 0.0, 0.0,
-         m_shooterWheel->Get());
+   m_dashboardDataFormat->SendLCDData(
+         heightOfTriangle,
+         m_rightMotor->GetSpeed(),
+         m_leftMotor->GetSpeed(),
+         m_rightMotor->Get(),
+         m_leftMotor->Get(),
+         m_shooterWheel->Get(),
+         m_shooterRotate->GetPosition(),
+         ((m_driverStationEnhancedIO->GetAnalogIn(SHOOTER_VELOCITY_POT)
+               - MID_POT_VALUE) * ((MAX_SHOOTER_VOLTAGE_ADJUSTMENT)
+               / (MAX_POT_VALUE - MID_POT_VALUE))));
    m_dashboardDataFormat->SendIOPortData();
    m_dashboardDataFormat->SendVisionData();
 }

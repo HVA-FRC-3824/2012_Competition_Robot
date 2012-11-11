@@ -21,8 +21,8 @@ public:
    virtual ~DashboardDataFormat();
 
    void SendLCDData(double height, double rightSpeed,
-         double leftSpeed, float rightSetValue, float leftSetValue, float P, float I, float D,
-         float throttleValue);
+         double leftSpeed, float rightSetValue, float leftSetValue,
+         float throttleValue, float position, float offset);
    void SendIOPortData(void);
    void SendVisionData(void);
 

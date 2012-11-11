@@ -168,7 +168,7 @@ private:
       kVelocity, kPercentage, kCurrent
    } driveSetting;
 
-   enum FerrisState
+   enum
    {
       kForward, kBackward, kStop
    } ferrisState;
