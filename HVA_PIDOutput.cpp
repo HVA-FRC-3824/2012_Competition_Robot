@@ -3,7 +3,6 @@
 class HVA_PIDOutput : public PIDOutput
 {
 private:
-   RobotDrive *m_robotDrive;
    float *value;
 
 public:

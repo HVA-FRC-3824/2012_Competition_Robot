@@ -36,6 +36,9 @@ void MyRobot::Autonomous()
       // Balence on the ramp
       newBalance();
       break;
+   case 5:
+      // Run current Velocity
+      driveStraightForDistanceCurrent();
    default:
       // Do nothing if no auto mode is selected
       break;
@@ -57,7 +60,7 @@ void MyRobot::driveStraightForDistance()
    while (IsAutonomous())
    {
       /************************ Run Stability Wheels *****************************/
-      SetStabilityWheelState();
+      setStabilityWheelState();
       runStabilityWheels();
 
       switch (autoState)
@@ -71,6 +74,51 @@ void MyRobot::driveStraightForDistance()
          break;
       case REVERSE:
          if (m_robotDrive->DriveDistanceUsingVelocity(.05, -10.0,
+               MAX_ACCELERATION_DISTANCE))
+         {
+            autoState = STOPPED;
+         }
+         break;
+      case STOPPED:
+         m_robotDrive->ArcadeVelocityDriveStepped(0, 0, MAX_ACCELERATION_ARCADE);
+         break;
+      }
+   }
+}
+
+void MyRobot::driveStraightForDistanceCurrent()
+{
+   enum
+   {
+      DRIVING, REVERSE, STOPPED
+   } autoState = DRIVING;
+
+   if (driveSetting == kCurrent)
+   {
+      setDriveModeToCurrent();
+   }
+   
+   while (IsAutonomous())
+   {
+      /************************ Run Stability Wheels *****************************/
+      setStabilityWheelState();
+      runStabilityWheels();
+      
+      printf("Current Velocity: %f\n", m_leftMotor->GetSpeed());
+      printf("Set Velocity: %f\n", m_currentVelocityLeft->GetSetpoint());
+      printf("Error: %f\n\n", m_leftMotor->GetSpeed() - m_currentVelocityLeft->GetSetpoint());
+
+      switch (autoState)
+      {
+      case DRIVING:
+         if (m_robotDriveVelocityPID->DriveDistanceUsingVelocity(.1, 10.0,
+               MAX_ACCELERATION_DISTANCE))
+         {
+            autoState = STOPPED;
+         }
+         break;
+      case REVERSE:
+         if (m_robotDriveVelocityPID->DriveDistanceUsingVelocity(.05, -10.0,
                MAX_ACCELERATION_DISTANCE))
          {
             autoState = STOPPED;
@@ -666,8 +714,8 @@ void MyRobot::newBalance()
                angularVelocity, drivePower, rampState);
          printTime = balenceTimer.Get();
       }
-      m_rightMotor->Set(drivePower * MAX_SPEED_VELOCITY);
-      m_leftMotor->Set(drivePower * MAX_SPEED_VELOCITY);
+      m_rightMotor->Set(drivePower * MAX_VELOCITY);
+      m_leftMotor->Set(drivePower * MAX_VELOCITY);
    }
    delete (&driveTimer);
    delete (&balenceTimer);
