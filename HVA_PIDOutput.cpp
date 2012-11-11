@@ -14,7 +14,6 @@ public:
 
    void PIDWrite(float output)
    {
-      printf("Mag: %f\n", output);
       *value = output;
    }
 };

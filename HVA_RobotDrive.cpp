@@ -48,7 +48,7 @@ HVA_RobotDrive::HVA_RobotDrive(SpeedController &frontLeftMotor,
  * Drive the robot a certaint distance and then stop. 
  * Return true when distance is reached.
  */
-bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance)
+bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance, float maxAcceleration)
 {
    static double previousTime = Timer::GetFPGATimestamp();
    static bool distanceRunning = false;
@@ -73,14 +73,11 @@ bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance)
    //  start running distance control
    if (distanceRunning == false)
    {
-      printf("Starting new run\n");
       motorOutputVelocity = m_rearRightMotor->Get() / m_maxOutput;
       startDistanceRight = ((CANJaguar*) m_rearRightMotor)->GetPosition();
       distanceRunning = true;
       stopping = false;
    }
-
-   printf("distance running %i\n", distanceRunning);
 
    // Distance is postive
    if (distance >= 0)
@@ -88,9 +85,7 @@ bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance)
 
       // Calculate the stopping distance
       stoppingDistance = pow(motorOutputVelocity * (m_maxOutput / 60), 2) / (2
-            * MAX_ACCELERATION_DISTANCE * (m_maxOutput / 60));
-
-      printf("stopping distance %f\n", stoppingDistance);
+            * maxAcceleration * (m_maxOutput / 60));
 
       // Start stopping if stopping distance is greatter than distance left
       if (stoppingDistance >= (distance
@@ -100,18 +95,13 @@ bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance)
          stopping = true;
       }
 
-      printf(
-            "distance to target %f\n",
-            (distance - (((CANJaguar*) m_rearRightMotor)->GetPosition()
-                  - startDistanceRight)));
-
       // depending on the stage find velocity differently
       if (stopping == false)
       {
-         if (motorOutputVelocity + MAX_ACCELERATION_DISTANCE * changeInTime
+         if (motorOutputVelocity + maxAcceleration * changeInTime
                <= maxSpeed)
          {
-            motorOutputVelocity += MAX_ACCELERATION_DISTANCE * changeInTime;
+            motorOutputVelocity += maxAcceleration * changeInTime;
          }
          else
          {
@@ -121,10 +111,10 @@ bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance)
       // Stopping
       else
       {
-         if (motorOutputVelocity - MAX_ACCELERATION_DISTANCE * changeInTime
+         if (motorOutputVelocity - maxAcceleration * changeInTime
                >= 0)
          {
-            motorOutputVelocity -= MAX_ACCELERATION_DISTANCE * changeInTime;
+            motorOutputVelocity -= maxAcceleration * changeInTime;
          }
          else
          {
@@ -133,9 +123,7 @@ bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance)
          }
       }
 
-      printf("Motor Power: %f\n", motorOutputVelocity);
       SetLeftRightMotorOutputs(-motorOutputVelocity, -motorOutputVelocity);
-      printf("Actural Motor Power %f\n\n", m_rearRightMotor->Get());
 
    }
    // Distance is negative
@@ -143,9 +131,7 @@ bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance)
    {
       // Calculate the stopping distance
       stoppingDistance = -(pow(motorOutputVelocity * (m_maxOutput / 60), 2) / (2
-            * MAX_ACCELERATION_DISTANCE * (m_maxOutput / 60)));
-
-      printf("stopping distance %f\n", stoppingDistance);
+            * maxAcceleration * (m_maxOutput / 60)));
 
       // Start stopping if stopping distance is greatter than distance left
       if (stoppingDistance <= (distance
@@ -155,18 +141,13 @@ bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance)
          stopping = true;
       }
 
-      printf(
-            "distance to target %f\n",
-            (distance - (((CANJaguar*) m_rearRightMotor)->GetPosition()
-                  - startDistanceRight)));
-
       // depending on the stage find velocity differently
       if (stopping == false)
       {
-         if (motorOutputVelocity - MAX_ACCELERATION_DISTANCE * changeInTime
+         if (motorOutputVelocity - maxAcceleration * changeInTime
                >= -maxSpeed)
          {
-            motorOutputVelocity -= MAX_ACCELERATION_DISTANCE * changeInTime;
+            motorOutputVelocity -= maxAcceleration * changeInTime;
          }
          else
          {
@@ -176,10 +157,10 @@ bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance)
       // Stopping
       else
       {
-         if (motorOutputVelocity + MAX_ACCELERATION_DISTANCE * changeInTime
+         if (motorOutputVelocity + maxAcceleration * changeInTime
                <= 0)
          {
-            motorOutputVelocity += MAX_ACCELERATION_DISTANCE * changeInTime;
+            motorOutputVelocity += maxAcceleration * changeInTime;
          }
          else
          {
@@ -188,15 +169,12 @@ bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance)
          }
       }
 
-      printf("Motor Power: %f\n", motorOutputVelocity);
       SetLeftRightMotorOutputs(-motorOutputVelocity, -motorOutputVelocity);
-      printf("Actural Motor Power %f\n\n", m_rearRightMotor->Get());
    }
    
    // Check to see if the distance is reached.
    if (distanceRunning == true)
    {
-      printf("Returned False");
       return false;
    }
    else
@@ -214,8 +192,7 @@ bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance)
  * @param rotateValue The value to use for the rotate right/left
  * @param squaredInputs If set, increases the sensitivity at low speeds
  */
-void HVA_RobotDrive::ArcadeVelocityDriveStepped(float moveValue,
-      float rotateValue, bool squaredInputs)
+void HVA_RobotDrive::ArcadeVelocityDriveStepped(float moveValue, float rotateValue, float maxAcceleration, bool squaredInputs)
 {
    static double previousTime = Timer::GetFPGATimestamp();
 
@@ -283,21 +260,21 @@ void HVA_RobotDrive::ArcadeVelocityDriveStepped(float moveValue,
    {
       // Set the output for the left motor.
       if (leftMotorDesiredOutput > leftMotorOutputVelocity
-            + MAX_ACCELERATION_ARCADE * changeInTime)
-         leftMotorOutputVelocity += MAX_ACCELERATION_ARCADE * changeInTime;
+            + maxAcceleration * changeInTime)
+         leftMotorOutputVelocity += maxAcceleration * changeInTime;
       else if (leftMotorDesiredOutput < leftMotorOutputVelocity
-            - MAX_ACCELERATION_ARCADE * changeInTime)
-         leftMotorOutputVelocity -= MAX_ACCELERATION_ARCADE * changeInTime;
+            - maxAcceleration * changeInTime)
+         leftMotorOutputVelocity -= maxAcceleration * changeInTime;
       else
          leftMotorOutputVelocity = leftMotorDesiredOutput;
 
       // Set the output for the right motor.
       if (rightMotorDesiredOutput > rightMotorOutputVelocity
-            + MAX_ACCELERATION_ARCADE * changeInTime)
-         rightMotorOutputVelocity += MAX_ACCELERATION_ARCADE * changeInTime;
+            + maxAcceleration * changeInTime)
+         rightMotorOutputVelocity += maxAcceleration * changeInTime;
       else if (rightMotorDesiredOutput < rightMotorOutputVelocity
-            - MAX_ACCELERATION_ARCADE * changeInTime)
-         rightMotorOutputVelocity -= MAX_ACCELERATION_ARCADE * changeInTime;
+            - maxAcceleration * changeInTime)
+         rightMotorOutputVelocity -= maxAcceleration * changeInTime;
       else
          rightMotorOutputVelocity = rightMotorDesiredOutput;
    }

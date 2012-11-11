@@ -4,8 +4,6 @@
 #include "WPILib.h"
 #include "Math.h"
 
-#define MAX_ACCELERATION_ARCADE  .25
-#define MAX_ACCELERATION_DISTANCE  .25
 #define TIME_THRESHOLD      1
 
 class HVA_RobotDrive: public RobotDrive
@@ -23,8 +21,8 @@ public:
    HVA_RobotDrive(SpeedController &frontLeftMotor, SpeedController &rearLeftMotor,
             SpeedController &frontRightMotor, SpeedController &rearRightMotor);
    
-   bool DriveDistanceUsingVelocity(float maxSpeed, float distance);
-   void ArcadeVelocityDriveStepped(float moveValue, float rotateValue, bool squaredInputs = true);
+   bool DriveDistanceUsingVelocity(float maxSpeed, float distance, float maxAcceleration);
+   void ArcadeVelocityDriveStepped(float moveValue, float rotateValue, float maxAcceleration, bool squaredInputs = true);
    
 };
 
