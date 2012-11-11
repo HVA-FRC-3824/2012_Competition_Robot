@@ -23,7 +23,8 @@ public:
    void SendLCDData(double height, double rightSpeed,
          double leftSpeed, float rightSetValue, float leftSetValue,
          float throttleValue, float speed, float offset);
-   void SendIOPortData(bool bottomPosition, float position, float frontDistance, float backDistance);
+   void SendIOPortData(bool bottomPosition, float position,
+         float frontDistance, float backDistance, float horizontalGyro, float verticalGyro);
    void SendVisionData(void);
 
 private:

@@ -5,18 +5,21 @@
 
 #define AVERAGE_BITS             3
 #define SAMPLES_PER_SECOND       1000
-//#define SCALING_FACTOR           0.0098
-#define SCALING_FACTOR           1.0
+#define SCALING_FACTOR           103.1859
 
+//------------------------------------------------------------------------------
+// Class to handle the Analog Sonar position sensor
+//------------------------------------------------------------------------------
 class AnalogSonar: public AnalogChannel
 {
-private:
-   void initSonar();
 public:
    AnalogSonar(UINT8 moduleNumber, UINT32 channel);
    AnalogSonar(UINT32 channel);
-   
+
    float GetRangeInches();
+
+private:
+   void initSonar();
 };
 
 #endif

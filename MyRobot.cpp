@@ -6,54 +6,48 @@
 
 // percent of rotation power (in decimal)
 #define ROTATE_REDUCE_FACTOR             1.0
-#define PID_CHANGE_VALUE                   2
-#define TIPPED_THRESHOLD                   2
+
+#define BALANCE_ON_BRIDGE_SPEED          0.10
+#define BALANCE_DISTANCE_DELTA          (1.0/12.0)
 
 MyRobot::MyRobot(void)
 {
-   m_dashboardDataFormat = new DashboardDataFormat();
-   m_rightMotor = new HVA_Victor(RIGHT_DRIVE_MOTOR,
-         new Encoder(RIGHT_ENCODER_A, RIGHT_ENCODER_B),
-         HVA_Victor::kPercentVbus);
-   m_leftMotor = new HVA_Victor(LEFT_DRIVE_MOTOR,
-         new Encoder(LEFT_ENCODER_A, LEFT_ENCODER_B), HVA_Victor::kPercentVbus);
-   m_shooterWheel = new CANJaguar(SHOOTER_WHEEL_MOTOR, CANJaguar::kVoltage);
-   m_shooterRotate = new CANJaguar(SHOOTER_ROTATE_MOTOR, CANJaguar::kPosition);
-   m_ferrisWheel = new Victor(FERRIS_WHEEL_MOTOR);
-   m_frontBallPickup = new Victor(FRONT_BALL_PICKUP_MOTOR);
-   m_backBallPickup = new Victor(BACK_BALL_PICKUP_MOTOR);
-   m_frontUltra = new AnalogSonar(ANALOG_ULTRASONIC);
-   m_backUltra = new Ultrasonic(ULTRASONIC_PING_OUTPUT, ULTRASONIC_ECHO_INPUT);
-   m_robotDrive = new HVA_RobotDrive(m_leftMotor, m_rightMotor); // create a robot drive system with four moters
-   m_compressor = new Compressor(COMPRESSOR_SENSOR, COMPRESSOR_RELAY);
-   m_ballLiftSolenoid = new DoubleSolenoid(BALL_LIFT_FORWARD,
-         BALL_LIFT_REVERSED);
-   m_rampExtender = new DoubleSolenoid(RAMP_EXTENDER_FORWARD,
-         RAMP_EXTENDER_REVERSE);
-   m_rampPusher = new DoubleSolenoid(RAMP_PUSHER_FORWARD, RAMP_PUSHER_REVERSE);
-   m_joystick = new Joystick(JOYSTICK_PORT); // as they are declared above.
-   m_buttonBox = new Joystick(BUTTON_BOX_PORT);
-   //m_buttonBox2 = new Joystick(BUTTON_BOX_PORT2);
-   m_bottomBallSensor = new AnalogTrigger(BOTTOM_BALL_SENSOR);
-   m_ferrisWheelStop = new DigitalInput(FERRIS_WHEEL_STOP_PORT);
-   m_gyroHorizontal = new Gyro(GYRO_HORIZONTAL_PORT);
-   m_gyroVertical = new Gyro(GYRO_VERTICAL_PORT);
-   m_driverStation = DriverStation::GetInstance();
+   m_dashboardDataFormat     = new DashboardDataFormat();
+   m_rightMotor              = new HVA_Victor(RIGHT_DRIVE_MOTOR,
+                               new Encoder(RIGHT_ENCODER_A, RIGHT_ENCODER_B), HVA_Victor::kPercentVbus);
+   m_leftMotor               = new HVA_Victor(LEFT_DRIVE_MOTOR,
+                               new Encoder(LEFT_ENCODER_A, LEFT_ENCODER_B), HVA_Victor::kPercentVbus);
+   m_shooterWheel            = new CANJaguar(SHOOTER_WHEEL_MOTOR, CANJaguar::kVoltage);
+   m_shooterRotate           = new CANJaguar(SHOOTER_ROTATE_MOTOR, CANJaguar::kPosition);
+   m_ferrisWheel             = new Victor(FERRIS_WHEEL_MOTOR);
+   m_frontBallPickup         = new Victor(FRONT_BALL_PICKUP_MOTOR);
+   m_backBallPickup          = new Victor(BACK_BALL_PICKUP_MOTOR);
+   m_frontUltra              = new AnalogSonar(ANALOG_ULTRASONIC);
+   m_backUltra               = new Ultrasonic(ULTRASONIC_PING_OUTPUT, ULTRASONIC_ECHO_INPUT);
+   m_robotDrive              = new HVA_RobotDrive(m_leftMotor, m_rightMotor);
+   m_compressor              = new Compressor(COMPRESSOR_SENSOR, COMPRESSOR_RELAY);
+   m_ballLiftSolenoid        = new DoubleSolenoid(BALL_LIFT_FORWARD, BALL_LIFT_REVERSED);
+   m_rampExtender            = new DoubleSolenoid(RAMP_EXTENDER_FORWARD, RAMP_EXTENDER_REVERSE);
+   m_rampPusher              = new DoubleSolenoid(RAMP_PUSHER_FORWARD, RAMP_PUSHER_REVERSE);
+   m_joystick                = new Joystick(JOYSTICK_PORT);
+   m_buttonBox               = new Joystick(BUTTON_BOX_PORT);
+   //m_buttonBox2              = new Joystick(BUTTON_BOX_PORT2);
+   m_bottomBallSensor        = new AnalogTrigger(BOTTOM_BALL_SENSOR);
+   m_ferrisWheelStop         = new DigitalInput(FERRIS_WHEEL_STOP_PORT);
+   m_gyroHorizontal          = new Gyro(GYRO_HORIZONTAL_PORT);
+   m_gyroVertical            = new Gyro(GYRO_VERTICAL_PORT);
+   m_driverStation           = DriverStation::GetInstance();
    m_driverStationEnhancedIO = &DriverStation::GetInstance()->GetEnhancedIO();
-   AxisCamera &camera = AxisCamera::GetInstance();
+   AxisCamera &camera        = AxisCamera::GetInstance();
 
    /******************************* Setup ********************************/
    // Set the State Enums for the robot
-   m_driveSetting = kPercentage;
-   m_rampState = kPusherRetracted;
-   m_ferrisState = kStop;
+   m_rampState    = kPusherRetracted;
+   m_ferrisState  = kStop;
    m_shooterRotationControlState = kTeleoperated;
 
+   // setup the ferris wheel location switch interrupt
    m_ferrisWheelStop->RequestInterrupts(MyRobot::ferrisHandler, this);
-   if (m_ferrisWheelStop->Get() == false)
-   {
-      m_ferrisWheelStop->EnableInterrupts();
-   }
 
    // Set up the bottom analog trigger
    m_bottomBallSensor->SetLimitsVoltage(4, 8);
@@ -62,7 +56,7 @@ MyRobot::MyRobot(void)
    m_shooterWheel->SetSpeedReference(CANJaguar::kSpeedRef_Encoder);
    m_shooterWheel->ConfigNeutralMode(CANJaguar::kNeutralMode_Coast);
    m_shooterWheel->ConfigEncoderCodesPerRev(6);
-   m_shooterWheel->ConfigFaultTime(.5);
+   m_shooterWheel->ConfigFaultTime(0.5);
 
    // Set up the Rotate Jaguar
    m_shooterRotate->SetSpeedReference(CANJaguar::kSpeedRef_QuadEncoder);
@@ -70,8 +64,8 @@ MyRobot::MyRobot(void)
    m_shooterRotate->ConfigEncoderCodesPerRev(1440);
    m_shooterRotate->ConfigNeutralMode(CANJaguar::kNeutralMode_Brake);
    m_shooterRotate->SetPID(ROTATE_CONTROLLER_P, ROTATE_CONTROLLER_I,
-         ROTATE_CONTROLLER_D);
-   m_shooterRotate->ConfigFaultTime(.5);
+                           ROTATE_CONTROLLER_D);
+   m_shooterRotate->ConfigFaultTime(0.5);
 
    // Reverse the correct drive motor
    m_robotDrive->SetInvertedMotor(RobotDrive::kRearLeftMotor, true);
@@ -118,13 +112,14 @@ void MyRobot::OperatorControl(void)
       readOperatorControls();
 
       /************Debug Printouts **********************************************/
-      printf("Position: %f\n", m_shooterRotate->GetPosition());
-      printf("Front Sonar: %f\n", m_frontUltra->GetRangeInches());
-      printf("Back Sonar: %f\n", m_backUltra->GetRangeInches());
-      printf("Right Postition:%f\n", m_rightMotor->GetPosition());
-      printf("Left Postition:%f\n", m_leftMotor->GetPosition());
-      printf("Botom Ball Sensor:%i\n", !m_bottomBallSensor->GetTriggerState());
-      printf("Shooter Velocity: %f\n\n", m_shooterWheel->GetSpeed());
+      printf("Distance: %f\n", m_rightMotor->GetPosition());
+//      printf("Position: %f\n", m_shooterRotate->GetPosition());
+//      printf("Front Sonar: %f\n", m_frontUltra->GetRangeInches());
+//      printf("Back Sonar: %f\n", m_backUltra->GetRangeInches());
+//      printf("Right Postition:%f\n", m_rightMotor->GetPosition());
+//      printf("Left Postition:%f\n", m_leftMotor->GetPosition());
+//      printf("Botom Ball Sensor:%i\n", !m_bottomBallSensor->GetTriggerState());
+//      printf("Shooter Velocity: %f\n\n", m_shooterWheel->GetSpeed());
       //      printf("FerrisVolt:%f\n", m_ferrisWheel->Get());
       //      printf("Range:%f\n", m_ultrasonic->GetRangeInches());
       //      printf("Current right:%f\n", m_rightMotor->GetOutputCurrent());
@@ -165,10 +160,14 @@ void MyRobot::OperatorControl(void)
  */
 void MyRobot::readOperatorControls()
 {
+   static bool drivingToRamp = false;
    static bool previousTriggerState = m_joystick->GetTrigger();
-   static bool driving;
+   static bool previousIncrementButtonState = m_joystick->GetRawButton(INCREMENT_POSITION);
+   static bool previousDecrementButtonState = m_joystick->GetRawButton(DECREMENT_POSITION);
    static float distanceToDrive;
-   static DriveSetting previousDriveSetting;
+   static HVA_Victor::ControlMode previousDriveSetting = m_rightMotor->GetControlMode();
+
+   float balanceDistanceDelta;
 
    /************************ Control the Drive Mode ***************************/
    if (m_joystick->GetRawButton(DRIVE_WITH_VELOCITY) == true)
@@ -182,48 +181,111 @@ void MyRobot::readOperatorControls()
    }
 
    /************************ Drive the Robot **********************************/
-   // Drive the robot using Arcade drive
-   // if the trigger is pulled then drive to the ramp
+   // if the trigger is pulled then drive up the ramp and balance (while the trigger is pulled)
    if (m_joystick->GetTrigger() == true)
    {
-      if (previousTriggerState != m_joystick->GetTrigger()
-            && m_joystick->GetTrigger() == true)
+      // determine if the trigger has just be pulled
+      if ((previousTriggerState != m_joystick->GetTrigger()) &&
+          (m_joystick->GetTrigger() == true))
       {
-         if (m_driveSetting != kVelocity)
+         // ensure the drive is in velocity mode
+         if (m_rightMotor->GetControlMode() != HVA_Victor::kVelocity)
          {
-            previousDriveSetting = m_driveSetting;
+            // remember the present drive setting to allow setting it back
+            // when the trigger is released
+            previousDriveSetting = m_rightMotor->GetControlMode();
+
+            // set the drive to velocity
             setDriveModeToVelocity();
          }
-         distanceToDrive = -((m_backUltra->GetRangeInches() - DISTANCE_TO_RAMP)
-               / 12);
-         driving = true;
       }
-      if (driving == true)
+
+      // ensure the balance distance offset is zero before reading the switched
+      balanceDistanceDelta = 0.0;
+
+      // check if increment distance
+      if ((previousIncrementButtonState != m_joystick->GetRawButton(INCREMENT_POSITION)) &&
+          (m_joystick->GetRawButton(INCREMENT_POSITION) == true))
       {
-//         if (m_robotDrive->DriveDistanceUsingVelocity(.2, distanceToDrive,
-//               MAX_ACCELERATION_DISTANCE))
-         if (m_robotDrive->DriveDistanceUsingVelocity(.1, -5.25,
-                        MAX_ACCELERATION_DISTANCE))
+         balanceDistanceDelta = BALANCE_DISTANCE_DELTA;
+      }
+
+      // check if decrement distance
+      else if ((previousDecrementButtonState != m_joystick->GetRawButton(DECREMENT_POSITION)) &&
+               (m_joystick->GetRawButton(DECREMENT_POSITION) == true))
+      {
+         balanceDistanceDelta = -BALANCE_DISTANCE_DELTA;
+      }
+
+      // perform the balance on bridge algorithm
+      m_robotDrive->BalanceOnBridge(BALANCE_ON_BRIDGE_SPEED, m_gyroVertical, balanceDistanceDelta);
+   }
+
+   // if the joysitck top button is pushed then drive to the ramp (while the button is pushed)
+   else if (m_joystick->GetTop() == true)
+      {
+      // determine if the trigger has just be pulled
+      if ((previousTriggerState != m_joystick->GetTrigger()) &&
+          (m_joystick->GetTrigger() == true))
+      {
+         // ensure the drive is in velocity mode
+         if (m_rightMotor->GetControlMode() != HVA_Victor::kVelocity)
          {
-            if (m_driveSetting != previousDriveSetting)
-            {
-//               setDriveModeToVoltagePercent();
-            }
-            driving = false;
+            // remember the present drive setting to allow setting it back
+            // when the trigger is released
+            previousDriveSetting = m_rightMotor->GetControlMode();
+
+            // set the drive to velocity
+            setDriveModeToVelocity();
+         }
+
+         // determine the distance to the ramp
+         distanceToDrive = -((m_backUltra->GetRangeInches() - DISTANCE_TO_RAMP) / 12);
+         drivingToRamp = true;
+      }
+
+      // determine if the robot is moving (not arrived at the destination)
+      // Note: Must keep calling the drive routine to keep the robot moving, but
+      //       do not call the routing when the robot has reached the destination
+      if (drivingToRamp == true)
+      {
+         // determine if the robot has reached the ramp
+         if (m_robotDrive->DriveDistance(0.2, distanceToDrive, MAX_ACCELERATION_DISTANCE))
+         {
+
+            // no longer driving to the ramp
+            drivingToRamp = false;
+         }
+      }
+   }
+
+   // Drive the robot using Arcade drive
+   else
+   {
+      // determine if the drive mode should be return to the initial setting
+      if (m_rightMotor->GetControlMode() != previousDriveSetting)
+      {
+      // Note: only allow voltage and velocity modes (default to voltage)
+      switch(previousDriveSetting)
+         {
+         case HVA_Victor::kVelocity:
+            setDriveModeToVelocity();
+            break;
+
+         default:
+            setDriveModeToVoltagePercent();
          }
       }
 
-   }
-   else
-   {
-      driving = false;
+      drivingToRamp = false;
 
-      if (m_driveSetting == kPercentage || m_driveSetting == kVelocity)
+      if ((m_rightMotor->GetControlMode() == HVA_Victor::kPercentVbus) ||
+          (m_rightMotor->GetControlMode() == HVA_Victor::kVelocity))
       {
          m_robotDrive->ArcadeDrive(m_joystick->GetAxis(Joystick::kYAxis),
                m_joystick->GetThrottle() * ROTATE_REDUCE_FACTOR);
       }
-      else
+      else if (m_rightMotor->GetControlMode() == HVA_Victor::kVelocity)
       {
          //      m_robotDrive->ArcadeVelocityDriveStepped(
          //            m_joystick->GetAxis(Joystick::kYAxis),
@@ -231,13 +293,17 @@ void MyRobot::readOperatorControls()
          //            (float) MAX_ACCELERATION_ARCADE, 2.0f);
       }
    }
-   previousTriggerState = m_joystick->GetTrigger();
+
+   // remember the user input control states
+   previousTriggerState         = m_joystick->GetTrigger();
+   previousIncrementButtonState = m_joystick->GetRawButton(INCREMENT_POSITION);
+   previousDecrementButtonState = m_joystick->GetRawButton(DECREMENT_POSITION);
 
    /************************ Check Rotation Override Switch *******************/
    // Check the rotation override switches, Check to see if operator control
-   if ((m_driverStationEnhancedIO->GetDigital(ROTATION_OVERRIDE) == true
-         || m_driverStationEnhancedIO->GetDigital(AUTONOMOUSLY_RUN_SHOOTER)
-               == false) && (IsOperatorControl() == true))
+   if (((m_driverStationEnhancedIO->GetDigital(ROTATION_OVERRIDE) == true)
+         || (m_driverStationEnhancedIO->GetDigital(AUTONOMOUSLY_RUN_SHOOTER)
+               == false)) && (IsOperatorControl() == true))
    {
       m_shooterRotationControlState = kTeleoperated;
    }
@@ -250,23 +316,31 @@ void MyRobot::readOperatorControls()
    if (m_driverStationEnhancedIO->GetDigital(STABILITY_SWITCH_BACKWARD_OVERRIDE)
          == true)
    {
-      m_rampExtender->Set(DoubleSolenoid::kForward);
+      if (m_rampExtender->Get() != DoubleSolenoid::kForward)
+      {
+         m_robotDrive->InitializeBalanceOnBridge(m_gyroVertical);
+         m_rampExtender->Set(DoubleSolenoid::kForward);
+      }
    }
    else
    {
-      m_rampExtender->Set(DoubleSolenoid::kReverse);
+      if (m_rampExtender->Get() != DoubleSolenoid::kReverse)
+         m_rampExtender->Set(DoubleSolenoid::kReverse);
    }
 
    if ((m_driverStationEnhancedIO->GetDigital(STABILITY_SWITCH_FORWARD_OVERRIDE)
          == true) && (m_driverStationEnhancedIO->GetDigital(
          STABILITY_SWITCH_BACKWARD_OVERRIDE) == true))
    {
-      m_rampPusher->Set(DoubleSolenoid::kForward);
+      if (m_rampPusher->Get() != DoubleSolenoid::kForward)
+         m_rampPusher->Set(DoubleSolenoid::kForward);
    }
    else
    {
-      m_rampPusher->Set(DoubleSolenoid::kReverse);
+      if (m_rampPusher->Get() != DoubleSolenoid::kReverse)
+         m_rampPusher->Set(DoubleSolenoid::kReverse);
    }
+
    /************************ RUN ShootingWheel ********************************/
    // drive the shooter manually if the cammera tracking is disabled or the full override is called
    if (((m_driverStationEnhancedIO->GetDigital(SHOOTER_WHEEL_OVERRIDE_MODE)
@@ -292,8 +366,8 @@ void MyRobot::readOperatorControls()
       m_frontBallPickup->Set(-BALL_PICKUP_SPEED);
       m_backBallPickup->Set(-BALL_PICKUP_SPEED);
    }
-   //if switch 8 is flipped then run the ball pickerupper to spit balls
 
+   // if switch 8 is flipped then run the ball pickerupper to spit balls
    else if (m_driverStationEnhancedIO->GetDigital(REVERSE_BALL_PICKUP) == true)
    {
       m_frontBallPickup->Set(BALL_PICKUP_SPEED);
@@ -335,7 +409,6 @@ void MyRobot::readOperatorControls()
    {
       m_ballLiftSolenoid->Set(DoubleSolenoid::kReverse);
    }
-
 }
 
 /**
@@ -345,6 +418,7 @@ void MyRobot::runFerrisWheel(FerrisState state)
 {
    static FerrisState previousState = kStop;
    static double time = Timer::GetFPGATimestamp();
+
    m_ferrisState = state;
 
    if ((state != previousState) && (state != kStop))
@@ -352,8 +426,7 @@ void MyRobot::runFerrisWheel(FerrisState state)
       time = Timer::GetFPGATimestamp();
    }
 
-   if (state != kStop && (Timer::GetFPGATimestamp() - time)
-         >= TIME_TILL_INTERRUPT_ENABLE)
+   if ((state != kStop) && ((Timer::GetFPGATimestamp() - time) >= TIME_TILL_INTERRUPT_ENABLE))
    {
       m_ferrisWheelStop->EnableInterrupts();
    }
@@ -363,9 +436,11 @@ void MyRobot::runFerrisWheel(FerrisState state)
    case kForward:
       m_ferrisWheel->Set(FERRIS_ROTATE_SPEED);
       break;
+
    case kBackward:
       m_ferrisWheel->Set(-FERRIS_ROTATE_SPEED);
       break;
+
    case kStop:
       m_ferrisWheel->Set(0.0f);
       break;
@@ -373,12 +448,13 @@ void MyRobot::runFerrisWheel(FerrisState state)
 }
 
 /**
- * Determin the state the ferris wheel should be in.
+ * Determine the state the ferris wheel should be in.
  */
 void MyRobot::runFerrisWheelFromControls(void)
 {
-   FerrisState ferrisStateToSet = m_ferrisState;
    static bool previousSwitchValue = false; // The previous value of the ferris wheel switch
+
+   FerrisState ferrisStateToSet = m_ferrisState;
 
    if (m_ferrisWheelStop->Get() == true && previousSwitchValue == false)
    {
@@ -411,76 +487,48 @@ void MyRobot::runFerrisWheelFromControls(void)
    {
       ferrisStateToSet = kBackward;
    }
+
    runFerrisWheel(ferrisStateToSet);
 }
 
 /**
- * Control Drive the Bridge Lever to match the state
- *    Posible States: kUp, kDown
- */
-void MyRobot::runRampPusher(RampState rampState)
-{
-   static double time = Timer::GetFPGATimestamp();
-
-   switch (rampState)
-   {
-   case kHome:
-      // Delay the retration when coming from the fully extended position
-      if (m_rampState == kPusherExtended)
-      {
-         time = Timer::GetFPGATimestamp();
-      }
-
-      m_rampPusher->Set(DoubleSolenoid::kReverse);
-
-      if ((Timer::GetFPGATimestamp() - time) > RAMP_PUSHER_DELAY)
-      {
-         m_rampExtender->Set(DoubleSolenoid::kReverse);
-      }
-      break;
-   case kPusherExtended:
-      m_rampExtender->Set(DoubleSolenoid::kForward);
-      if ((Timer::GetFPGATimestamp() - time) > RAMP_PUSHER_DELAY)
-      {
-         m_rampPusher->Set(DoubleSolenoid::kForward);
-      }
-      break;
-   case kPusherRetracted:
-      m_rampExtender->Set(DoubleSolenoid::kForward);
-      m_rampPusher->Set(DoubleSolenoid::kReverse);
-      break;
-   }
-   m_rampState = rampState;
-}
-
-/**
- * Set the drive mode to run of velocity 
+ * Set the drive mode to run off velocity
  *    Motor Values: -1 to 1
  */
 void MyRobot::setDriveModeToVelocity(void)
 {
-   m_driveSetting = kVelocity;
-   printf("Before Set Control mode to kVelocity\n");
    m_rightMotor->ChangeControlMode(HVA_Victor::kVelocity);
    m_leftMotor->ChangeControlMode(HVA_Victor::kVelocity);
-   printf("Before set max Velocity\n");
+
    m_robotDrive->SetMaxOutput(MAX_VELOCITY);
-   printf("Before Enabling\n");
+
    m_rightMotor->EnableControl();
    m_leftMotor->EnableControl();
-   printf("After Enabling\n");
 }
 
 /**
  * Set the drive mode to run off voltage percentage
- *    Motor Values: 
+ *    Motor Values:
  */
 void MyRobot::setDriveModeToVoltagePercent()
 {
-   m_driveSetting = kPercentage;
    m_rightMotor->ChangeControlMode(HVA_Victor::kPercentVbus);
    m_leftMotor->ChangeControlMode(HVA_Victor::kPercentVbus);
+
    m_robotDrive->SetMaxOutput(MAX_VOLTAGE_PERCENT);
+
+   m_rightMotor->EnableControl();
+   m_leftMotor->EnableControl();
+}
+
+/**
+ * Set the drive mode to run off position PID
+ */
+void MyRobot::setDriveModeToPosition()
+{
+   m_rightMotor->ChangeControlMode(HVA_Victor::kPosition);
+   m_leftMotor->ChangeControlMode(HVA_Victor::kPosition);
+
    m_rightMotor->EnableControl();
    m_leftMotor->EnableControl();
 }
@@ -505,7 +553,9 @@ void MyRobot::sendDashboardData()
    m_dashboardDataFormat->SendIOPortData(
          !m_bottomBallSensor->GetTriggerState(),
          m_shooterRotate->GetPosition(), m_frontUltra->GetRangeInches(),
-         m_backUltra->GetRangeInches());
+         m_backUltra->GetRangeInches(),
+         m_gyroHorizontal->GetAngle(),
+         -m_gyroVertical->GetAngle());
    m_dashboardDataFormat->SendVisionData();
 }
 

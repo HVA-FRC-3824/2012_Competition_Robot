@@ -3,12 +3,11 @@
 
 #include "WPILib.h"
 
+//------------------------------------------------------------------------------
+// Class to handle the custom HVA PID Jaguar as a PID source
+//------------------------------------------------------------------------------
 class HVA_PIDJaguarVelocitySource : public PIDSource
 {
-private:
-   float *value;
-   CANJaguar *jaguar;
-
 public:
    HVA_PIDJaguarVelocitySource(CANJaguar *jag)
    {
@@ -19,6 +18,10 @@ public:
    {
       return jaguar->GetSpeed();
    }
+
+private:
+   float *value;
+   CANJaguar *jaguar;
 };
 
 #endif

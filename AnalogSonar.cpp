@@ -1,12 +1,10 @@
 #include "AnalogSonar.h"
 
-AnalogSonar::AnalogSonar(UINT8 moduleNumber, UINT32 channel) :
-   AnalogChannel(moduleNumber, channel)
+AnalogSonar::AnalogSonar(UINT8 moduleNumber, UINT32 channel) : AnalogChannel(moduleNumber, channel)
 {
    initSonar();
 }
-AnalogSonar::AnalogSonar(UINT32 channel) :
-   AnalogChannel(channel)
+AnalogSonar::AnalogSonar(UINT32 channel) : AnalogChannel(channel)
 {
    initSonar();
 }

@@ -3,11 +3,11 @@
 
 #include "WPILib.h"
 
+//------------------------------------------------------------------------------
+// Class to define a custom HVA PID output
+//------------------------------------------------------------------------------
 class HVA_PIDOutput : public PIDOutput
 {
-private:
-   float *value;
-
 public:
    HVA_PIDOutput(float *f)
    {
@@ -18,6 +18,9 @@ public:
    {
       *value = output;
    }
+
+private:
+   float *value;
 };
 
 #endif

@@ -3,11 +3,11 @@
 
 #include "WPILib.h"
 
-class HVA_PIDSource : public PIDSource
+//------------------------------------------------------------------------------
+// Class to define a custom HVA PID source
+//------------------------------------------------------------------------------
+     class HVA_PIDSource : public PIDSource
 {
-private:
-   float *value;
-
 public:
    HVA_PIDSource(float *f)
    {
@@ -18,6 +18,9 @@ public:
    {
       return *value;
    }
+
+private:
+   float *value;
 };
 
 #endif

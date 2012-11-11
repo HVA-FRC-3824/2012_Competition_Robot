@@ -12,6 +12,7 @@ DashboardDataFormat::DashboardDataFormat(void)
 
 DashboardDataFormat::~DashboardDataFormat()
 {
+
 }
 
 //---------------------------------------------------------------------------------
@@ -75,7 +76,8 @@ void DashboardDataFormat::SendVisionData()
    dash.Finalize();
 }
 
-void DashboardDataFormat::SendIOPortData(bool bottomPosition, float position, float frontDistance, float backDistance)
+void DashboardDataFormat::SendIOPortData(bool bottomPosition, float position,
+                                         float frontDistance, float backDistance, float horizontalGyro, float verticalGyro)
 {
    Dashboard &dash = DriverStation::GetInstance()->GetLowPriorityDashboardPacker();
 
@@ -200,11 +202,13 @@ void DashboardDataFormat::SendIOPortData(bool bottomPosition, float position, fl
 
       // Can't read solenoids without an instance of the object
       dash.AddU8((char) 0);
-      
+
       dash.AddBoolean(bottomPosition);
       dash.AddFloat(position);
       dash.AddFloat(frontDistance);
       dash.AddFloat(backDistance);
+      dash.AddFloat(horizontalGyro);
+      dash.AddFloat(verticalGyro);
    }
    dash.FinalizeCluster();
    dash.Finalize();

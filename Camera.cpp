@@ -11,7 +11,7 @@
 #define PIXEL_CONVERSION             0.00025
 
 // Incress the value of the Voltage offset to incress the distance of the shooter.
-// Calculated shooter voltage offset     29.32880164
+// Calculated shooter voltage offset       29.32880164
 #define SHOOTER_VOLTAGE_OFFSET           29.42880164
 
 // Incress the value of the pixel offset in order to aim more to the right.
@@ -26,7 +26,7 @@
  */
 bool MyRobot::cameraControl(void)
 {
-   int targetStatus; // Is the target found by the robot
+   int    targetStatus; // Is the target found by the robot
    double distanceToTarget; // The distance from the targets
    static double voltageToDriveShooter = DEFAULT_AUTONOMOUS_VOLTAGE; // The voltage to drive the shooter
    double valueToRotate; // The value to rotate the shooter to relative to current position
@@ -34,10 +34,11 @@ bool MyRobot::cameraControl(void)
    double pixelOff;
 
    // Check to see if the shooter is to be controled by the robot or by the operators
-   if (m_driverStationEnhancedIO->GetDigital(AUTONOMOUSLY_RUN_SHOOTER) == true
-         || IsAutonomous() == true)
+   if ((m_driverStationEnhancedIO->GetDigital(AUTONOMOUSLY_RUN_SHOOTER) == true) ||
+       (IsAutonomous() == true))
    {
       printf("In Camera Code\n");
+
       // Process the camera images
       targetStatus = readCamera(heightOfTriangle, distanceToTarget,
             voltageToDriveShooter, valueToRotate, pixelOff);
@@ -49,15 +50,14 @@ bool MyRobot::cameraControl(void)
       //            * GYRO_CONVERSION;
       //      previousGyro = m_gyroHorizontal->GetAngle();
 
-
       // Control the Shooter Autonomously
       autonomouslyDriveShooter(targetStatus, distanceToTarget,
             voltageToDriveShooter, valueToRotate);
    }
 
-   if ((fabs(pixelOff) < PIXEL_OFF_THRESHOLD) && (fabs(
-         m_shooterWheel->GetOutputVoltage() - m_shooterWheel->Get())
-         < VOLTAGE_THRESHOLD))
+   if ((fabs(pixelOff) < PIXEL_OFF_THRESHOLD) &&
+       (fabs(m_shooterWheel->GetOutputVoltage() - m_shooterWheel->Get())
+        < VOLTAGE_THRESHOLD))
    {
       readyToFire = true;
       m_driverStationEnhancedIO->SetDigitalOutput(READY_TO_FIRE_LED, true);
@@ -67,6 +67,7 @@ bool MyRobot::cameraControl(void)
       readyToFire = false;
       m_driverStationEnhancedIO->SetDigitalOutput(READY_TO_FIRE_LED, false);
    }
+
    return readyToFire;
 }
 
@@ -78,7 +79,8 @@ bool MyRobot::cameraControl(void)
  * Return of 2 means no targets found
  */
 int MyRobot::readCamera(double &heightOfTriangle, double &distanceToTarget,
-      double &voltageToDriveShooter, double &valueToRotate, double &pixelOff)
+                        double &voltageToDriveShooter, double &valueToRotate,
+                        double &pixelOff)
 {
    int targetStatus = 0; // Is the target found by the robot
 
@@ -182,7 +184,7 @@ int MyRobot::readCamera(double &heightOfTriangle, double &distanceToTarget,
       // printf("\n\n");
       delete HSLimage;
    }
-   else // Not a new image 
+   else // Not a new image
    {
       // no targets found
       targetStatus = 3;
@@ -245,7 +247,7 @@ int MyRobot::readCamera(double &heightOfTriangle, double &distanceToTarget,
     */
 
    // Calculate the value to rotate the shooter to.
-   // ToDO -add in 
+   // ToDO -add in
    if ((targetStatus == 0 || targetStatus == 1) && (IsOperatorControl()
          || (m_driverStationEnhancedIO->GetDigital(AUTONOMOUSLY_RUN_SHOOTER)
                == true)))
@@ -269,22 +271,20 @@ int MyRobot::readCamera(double &heightOfTriangle, double &distanceToTarget,
 /**
  * Method to drive the shooter automonously
  */
-void MyRobot::autonomouslyDriveShooter(int targetStatus,
-      double distanceToTarget, double voltageToDriveShooter,
-      double valueToRotate)
+void MyRobot::autonomouslyDriveShooter(int targetStatus, double distanceToTarget,
+                                       double voltageToDriveShooter, double valueToRotate)
 {
    // Set the Voltage output for the wheel if the Override is off
-   if (m_driverStationEnhancedIO->GetDigital(SHOOTER_WHEEL_OVERRIDE) == false
-         || IsAutonomous() == true)
+   if ((m_driverStationEnhancedIO->GetDigital(SHOOTER_WHEEL_OVERRIDE) == false) ||
+       (IsAutonomous() == true))
    {
       m_shooterWheel->Set(voltageToDriveShooter);
    }
-   // Use the pot to adjust the voltage
-   else if ((m_driverStationEnhancedIO->GetDigital(SHOOTER_WHEEL_OVERRIDE)
-         == true) && (m_driverStationEnhancedIO->GetDigital(
-         SHOOTER_WHEEL_OVERRIDE_MODE) == false))
-   {
 
+   // Use the pot to adjust the voltage
+   else if ((m_driverStationEnhancedIO->GetDigital(SHOOTER_WHEEL_OVERRIDE) == true) &&
+            (m_driverStationEnhancedIO->GetDigital(SHOOTER_WHEEL_OVERRIDE_MODE) == false))
+   {
       m_shooterWheel->Set(
             voltageToDriveShooter + ((m_driverStationEnhancedIO->GetAnalogIn(
                   SHOOTER_VELOCITY_POT) - MID_POT_VALUE)
@@ -300,8 +300,7 @@ void MyRobot::autonomouslyDriveShooter(int targetStatus,
 
       // Incresse I if the goal is close
       static bool incressedI = false;
-      if (fabs(rotationValue - m_shooterRotate->GetPosition())
-            < VALUE_TO_INCRESS_I)
+      if (fabs(rotationValue - m_shooterRotate->GetPosition()) < VALUE_TO_INCRESS_I)
       {
          if (incressedI == false)
          {
@@ -319,9 +318,10 @@ void MyRobot::autonomouslyDriveShooter(int targetStatus,
             incressedI = false;
          }
       }
+
       /************* Enable to track target *************************************/
-      if ((rotationValue >= MINIMUM_ROTATION_OF_SHOOTER) && (rotationValue
-            <= MAXIMUM_ROTATION_OF_SHOOTER))
+      if ((rotationValue >= MINIMUM_ROTATION_OF_SHOOTER) &&
+          (rotationValue <= MAXIMUM_ROTATION_OF_SHOOTER))
       {
          m_shooterRotate->Set(rotationValue);
       }
@@ -365,8 +365,8 @@ void MyRobot::sortTargetArray(
    double temp[NUMBER_OF_TARGET_PARAMETERS];
 
    // Check to see if the left and right are backwards
-   if (targets[LEFT_TARGET][CENTER_OF_MASS_X_INDEX]
-         > targets[RIGHT_TARGET][CENTER_OF_MASS_X_INDEX])
+   if (targets[LEFT_TARGET][CENTER_OF_MASS_X_INDEX] >
+         targets[RIGHT_TARGET][CENTER_OF_MASS_X_INDEX])
    {
       for (int i = 0; i < NUMBER_OF_TARGET_PARAMETERS; i++)
       {
