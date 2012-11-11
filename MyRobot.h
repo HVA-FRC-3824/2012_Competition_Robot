@@ -16,6 +16,7 @@
  *    Custom 4 - Added camera task and automomous modes (Outdated)
  *    Custom 5 - Added ramp control and added velocity controls to the library (Stable)
  *    Custom 6 - Added autonomous code and revised the ramp control. (Stable)
+ *    Custom 7 - Added new equation for voltage
  */
 
 /*************************** Robot Defines ************************************/
@@ -99,23 +100,22 @@
 #define SHOOTER_ROTATE_SPEED             0.4f
 #define FERRIS_ROTATE_SPEED              0.5f
 #define MAX_SPEED_VOLTAGE_PERCENT        1.0
-// <Test>
-//#define MAX_SPEED_VELOCITY             600.0
-// </Test>
-#define MAX_SPEED_VELOCITY              60.0
+
+#define MAX_SPEED_VELOCITY             600.0
+
+//#define MAX_SPEED_VELOCITY              60.0
 
 /************************** PID Defines ***************************************/
-//#define TURN_CONTROLLER_P                0.02
-//#define TURN_CONTROLLER_I                0.0001
-//#define TURN_CONTROLLER_D                0.0
-
-// <TEST>
-#define TURN_CONTROLLER_P                0.04
-#define TURN_CONTROLLER_I                0.01
+#define TURN_CONTROLLER_P                0.02
+#define TURN_CONTROLLER_I                0.0001
 #define TURN_CONTROLLER_D                0.0
-// </TEST>
-
 #define TURN_CONTROLLER_PERIOD           0.005
+
+#define ROTATE_CONTROLLER_P              4000
+#define ROTATE_CONTROLLER_I              0.2
+#define VALUE_TO_INCRESS_I                .01
+#define INCRESSED_I_VALUE                10.0
+#define ROTATE_CONTROLLER_D              10.0
 
 #define MOTOR_P                          2.0
 #define MOTOR_I                          0.1
@@ -150,7 +150,7 @@ private:
    DigitalInput        *m_ferrisWheelStop;      // Ferris wheel limit switch
    DigitalInput        *m_bottomSlot;           // Bottom slot photo gate
    Gyro                *m_gyroHorizontal;       // Horizontally mounted gyro
-   Gyro                *m_gyroVerticall;        // Vertically mounted gyro
+   Gyro                *m_gyroVertical;         // Vertically mounted gyro
    Ultrasonic          *ultra;                  // The ultra sonic sensor
    DriverStation       *m_driverStation;        // Driver Station
    HVA_PIDOutput       *m_pidOutput;            // object that handles the output of the PID controller

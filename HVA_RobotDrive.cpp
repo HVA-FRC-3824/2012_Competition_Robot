@@ -286,3 +286,124 @@ void HVA_RobotDrive::ArcadeVelocityDriveStepped(float moveValue, float rotateVal
 
    SetLeftRightMotorOutputs(-leftMotorOutputVelocity, -rightMotorOutputVelocity);
 }
+void HVA_RobotDrive::ArcadeVelocityDriveStepped(float moveValue,
+      float rotateValue, float maxForwardAcceleration,
+      float maxRotationalAcceleration, bool squaredInputs)
+{
+   static double previousTime = Timer::GetFPGATimestamp();
+
+   // local variables to hold the computed PWM values for the motors
+   float leftMotorDesiredOutput;
+   float rightMotorDesiredOutput;
+
+   static float leftMotorOutputVelocity;
+   static float rightMotorOutputVelocity;
+
+   moveValue = -Limit(moveValue);
+   rotateValue = -Limit(rotateValue);
+
+   if (squaredInputs)
+   {
+      // square the inputs (while preserving the sign) to increase fine control while permitting full power
+      if (moveValue >= 0.0)
+      {
+         moveValue = (moveValue * moveValue);
+      }
+      else
+      {
+         moveValue = -(moveValue * moveValue);
+      }
+      if (rotateValue >= 0.0)
+      {
+         rotateValue = (rotateValue * rotateValue);
+      }
+      else
+      {
+         rotateValue = -(rotateValue * rotateValue);
+      }
+   }
+
+   if (moveValue > 0.0)
+   {
+      if (rotateValue > 0.0)
+      {
+         leftMotorDesiredOutput = moveValue - rotateValue;
+         rightMotorDesiredOutput = max(moveValue, rotateValue);
+      }
+      else
+      {
+         leftMotorDesiredOutput = max(moveValue, -rotateValue);
+         rightMotorDesiredOutput = moveValue + rotateValue;
+      }
+   }
+   else
+   {
+      if (rotateValue > 0.0)
+      {
+         leftMotorDesiredOutput = -max(-moveValue, rotateValue);
+         rightMotorDesiredOutput = moveValue + rotateValue;
+      }
+      else
+      {
+         leftMotorDesiredOutput = moveValue - rotateValue;
+         rightMotorDesiredOutput = -max(-moveValue, -rotateValue);
+      }
+   }
+
+   double changeInTime = Timer::GetFPGATimestamp() - previousTime;
+   previousTime = Timer::GetFPGATimestamp();
+   if (changeInTime < TIME_THRESHOLD)
+   {
+      if ((leftMotorDesiredOutput >= 0 && rightMotorDesiredOutput >= 0)
+            || (leftMotorDesiredOutput <= 0 && rightMotorDesiredOutput <= 0))
+      {
+         // Set the output for the left motor.
+         if (leftMotorDesiredOutput > leftMotorOutputVelocity
+               + maxForwardAcceleration * changeInTime)
+            leftMotorOutputVelocity += maxForwardAcceleration * changeInTime;
+         else if (leftMotorDesiredOutput < leftMotorOutputVelocity
+               - maxForwardAcceleration * changeInTime)
+            leftMotorOutputVelocity -= maxForwardAcceleration * changeInTime;
+         else
+            leftMotorOutputVelocity = leftMotorDesiredOutput;
+
+         // Set the output for the right motor.
+         if (rightMotorDesiredOutput > rightMotorOutputVelocity
+               + maxForwardAcceleration * changeInTime)
+            rightMotorOutputVelocity += maxForwardAcceleration * changeInTime;
+         else if (rightMotorDesiredOutput < rightMotorOutputVelocity
+               - maxForwardAcceleration * changeInTime)
+            rightMotorOutputVelocity -= maxForwardAcceleration * changeInTime;
+         else
+            rightMotorOutputVelocity = rightMotorDesiredOutput;
+      }
+      else
+      {
+         // Set the output for the left motor.
+          if (leftMotorDesiredOutput > leftMotorOutputVelocity
+                + maxRotationalAcceleration * changeInTime)
+             leftMotorOutputVelocity += maxRotationalAcceleration * changeInTime;
+          else if (leftMotorDesiredOutput < leftMotorOutputVelocity
+                - maxRotationalAcceleration * changeInTime)
+             leftMotorOutputVelocity -= maxRotationalAcceleration * changeInTime;
+          else
+             leftMotorOutputVelocity = leftMotorDesiredOutput;
+
+          // Set the output for the right motor.
+          if (rightMotorDesiredOutput > rightMotorOutputVelocity
+                + maxRotationalAcceleration * changeInTime)
+             rightMotorOutputVelocity += maxRotationalAcceleration * changeInTime;
+          else if (rightMotorDesiredOutput < rightMotorOutputVelocity
+                - maxRotationalAcceleration * changeInTime)
+             rightMotorOutputVelocity -= maxRotationalAcceleration * changeInTime;
+          else
+             rightMotorOutputVelocity = rightMotorDesiredOutput;}
+   }
+   else
+   {
+      leftMotorOutputVelocity = m_rearLeftMotor->Get() / m_maxOutput;
+      rightMotorOutputVelocity = m_rearRightMotor->Get() / m_maxOutput;
+   }
+
+   SetLeftRightMotorOutputs(-leftMotorOutputVelocity, -rightMotorOutputVelocity);
+}

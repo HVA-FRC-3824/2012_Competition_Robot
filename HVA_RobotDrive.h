@@ -23,7 +23,7 @@ public:
    
    bool DriveDistanceUsingVelocity(float maxSpeed, float distance, float maxAcceleration);
    void ArcadeVelocityDriveStepped(float moveValue, float rotateValue, float maxAcceleration, bool squaredInputs = true);
-   
+   void ArcadeVelocityDriveStepped(float moveValue, float rotateValue, float maxForwardAcceleration, float maxRotationalAcceleration, bool squaredInputs = true);
 };
 
 #endif

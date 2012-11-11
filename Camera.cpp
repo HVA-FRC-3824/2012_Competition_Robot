@@ -9,7 +9,9 @@
 /* Conversion Defines */
 #define GYRO_CONVERSION               0.0044
 #define PIXEL_CONVERSION             0.00009
-#define PIXEL_OFFSET                      -8
+// Calculated shooter voltage offset     29.32880164
+#define SHOOTER_VOLTAGE_OFFSET           29.42880164
+#define PIXEL_OFFSET                     10.0
 /******************************************************************************/
 
 #define PIXEL_OFF_THRESHOLD              5.0
@@ -51,7 +53,7 @@ bool MyRobot::cameraControl(void)
 
          // Set up the Rotate Jaguar
          m_shooterRotate->ChangeControlMode(CANJaguar::kPosition);
-         m_shooterRotate->SetPID(4000, 0.2, 10.0);
+         m_shooterRotate->SetPID(ROTATE_CONTROLLER_P, ROTATE_CONTROLLER_I, ROTATE_CONTROLLER_D);
          m_shooterRotate->Set(m_shooterRotate->GetPosition());
          m_shooterRotate->EnableControl();
       }
@@ -78,9 +80,8 @@ bool MyRobot::cameraControl(void)
       }
    }
    
-   printf("Pixels off: %f\n", pixelOff);
-   
-   if ((pixelOff < PIXEL_OFF_THRESHOLD) && (fabs(
+   printf("Pixels off: %f\n\n", pixelOff);
+   if ((fabs(pixelOff) < PIXEL_OFF_THRESHOLD) && (fabs(
          m_shooterWheel->GetOutputVoltage() - voltageToDriveShooter)
          < VOLTAGE_THRESHOLD))
    {
@@ -221,17 +222,14 @@ int MyRobot::readCamera(double &heightOfTriangle, double &distanceToTarget,
                               + results[RIGHT_TARGET][CENTER_OF_MASS_Y_INDEX])
                               / 2.0), 2.0));
 
-      //double oldDistance = 43.867483765 * pow(0.986054120856, height);
-
-      // Calculate Distance
-      distanceToTarget = 2741.0998 * pow((1 / heightOfTriangle), 1.2082);
-
       // Calculate the voltage to drive the shooter
       // TODO - Recalculate the Voltage off of the height of the triangle
       if (m_buttonBox->GetRawButton(CALCULATE_VOLTAGE) == true)
       {
-         voltageToDriveShooter = 5.275914116 * exp(
-               0.0286983122 * distanceToTarget);
+         voltageToDriveShooter = (-0.00001894 * pow(heightOfTriangle, 3)) +
+                                 ( 0.00602003 * pow(heightOfTriangle, 2)) +
+                                 (-0.64413759 * heightOfTriangle) +
+                                 SHOOTER_VOLTAGE_OFFSET;
       }
 
    }
@@ -250,7 +248,7 @@ int MyRobot::readCamera(double &heightOfTriangle, double &distanceToTarget,
    // Calculate the value to rotate the shooter to.
    if (targetStatus == 0 || targetStatus == 1)
    {
-      pixelOff = (results[TOP_TARGET][CENTER_OF_MASS_X_INDEX] - (320 / 2));
+      pixelOff = ((results[TOP_TARGET][CENTER_OF_MASS_X_INDEX] + PIXEL_OFFSET) - (320 / 2));
       valueToRotate = pixelOff * PIXEL_CONVERSION;
    }
 
@@ -306,20 +304,24 @@ void MyRobot::autonomouslyDriveShooter(int targetStatus,
    
    // <Test>
    // Incresse I if the goal is close
-//   if(fabs(rotationValue - m_shooterRotate->GetPosition()) < .01)
-//   {
-//      if (m_shooterRotate->GetI() == TURN_CONTROLLER_I)
-//      {
-//         m_shooterRotate->SetPID(m_shooterRotate->GetP(), .01, m_shooterRotate->GetD());
-//      }
-//   }
-//   else
-//   {
-//      if (m_shooterRotate->GetI() != TURN_CONTROLLER_I)
-//      {
-//         m_shooterRotate->SetPID(m_shooterRotate->GetP(), TURN_CONTROLLER_I, m_shooterRotate->GetD());
-//      }
-//   }
+   static bool incressedI = false;
+   if(fabs(rotationValue - m_shooterRotate->GetPosition()) < VALUE_TO_INCRESS_I)
+   {
+      printf("I: %f\n", m_shooterRotate->GetI());
+      if (incressedI == false)
+      {
+         m_shooterRotate->SetPID(m_shooterRotate->GetP(), INCRESSED_I_VALUE, m_shooterRotate->GetD());
+         incressedI = true;
+      }
+   }
+   else
+   {
+      if (incressedI = true)
+      {
+         m_shooterRotate->SetPID(m_shooterRotate->GetP(), ROTATE_CONTROLLER_I, m_shooterRotate->GetD());
+         incressedI = false;
+      }
+   }
    // </Test>
    /************* Enable to track target *************************************/
    if ((rotationValue >= MINIMUM_ROTATION_OF_SHOOTER) && (rotationValue
