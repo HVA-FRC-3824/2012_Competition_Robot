@@ -2,6 +2,7 @@
 #define __HVA_RobotDrive_h__
 
 #include "WPILib.h"
+#include "HVA_Victor.h"
 #include "Math.h"
 
 #define TIME_THRESHOLD      1

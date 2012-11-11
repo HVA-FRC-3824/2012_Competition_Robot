@@ -75,7 +75,7 @@ bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance,
    if (distanceRunning == false)
    {
       motorOutputVelocity = m_rearRightMotor->Get() / m_maxOutput;
-      startDistanceRight = ((CANJaguar*) m_rearRightMotor)->GetPosition();
+      startDistanceRight = ((HVA_Victor*) m_rearRightMotor)->GetPosition();
       distanceRunning = true;
       stopping = false;
    }
@@ -90,7 +90,7 @@ bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance,
 
       // Start stopping if stopping distance is greatter than distance left
       if (stoppingDistance >= (distance
-            - (((CANJaguar*) m_rearRightMotor)->GetPosition()
+            - (((HVA_Victor*) m_rearRightMotor)->GetPosition()
                   - startDistanceRight)))
       {
          stopping = true;
@@ -134,7 +134,7 @@ bool HVA_RobotDrive::DriveDistanceUsingVelocity(float maxSpeed, float distance,
 
       // Start stopping if stopping distance is greatter than distance left
       if (stoppingDistance <= (distance
-            - (((CANJaguar*) m_rearRightMotor)->GetPosition()
+            - (((HVA_Victor*) m_rearRightMotor)->GetPosition()
                   - startDistanceRight)))
       {
          stopping = true;

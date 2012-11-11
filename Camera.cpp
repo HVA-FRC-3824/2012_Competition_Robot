@@ -37,6 +37,7 @@ bool MyRobot::cameraControl(void)
    if (m_driverStationEnhancedIO->GetDigital(AUTONOMOUSLY_RUN_SHOOTER) == true
          || IsAutonomous() == true)
    {
+      printf("In Camera Code\n");
       // Process the camera images
       targetStatus = readCamera(heightOfTriangle, distanceToTarget,
             voltageToDriveShooter, valueToRotate, pixelOff);

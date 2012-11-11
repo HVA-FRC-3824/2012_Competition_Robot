@@ -19,17 +19,17 @@ DashboardDataFormat::~DashboardDataFormat()
 //---------------------------------------------------------------------------------
 void DashboardDataFormat::SendLCDData(double height, double rightSpeed,
       double leftSpeed, float rightSetValue, float leftSetValue,
-      float throttleValue, float position, float offset)
+      float throttleValue, float speed, float offset)
 {
-   dsLCD->PrintfLine(DriverStationLCD::kUser_Line1, "Height: %f", height);
-   dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "R: %4.1f, %4.1f", rightSpeed,
+   dsLCD->PrintfLine(DriverStationLCD::kUser_Line1, "R: %4.1f, %4.1f", rightSpeed,
                      rightSetValue);
-   dsLCD->PrintfLine(DriverStationLCD::kUser_Line3, "L: %4.1f, %4.1f", leftSpeed,
+   dsLCD->PrintfLine(DriverStationLCD::kUser_Line2, "L: %4.1f, %4.1f", leftSpeed,
                      leftSetValue);
-   dsLCD->PrintfLine(DriverStationLCD::kUser_Line4, "Postion: %f", position);
-   dsLCD->PrintfLine(DriverStationLCD::kUser_Line5, "Offset: %f", offset);
-   dsLCD->PrintfLine(DriverStationLCD::kUser_Line6, "Shooter Value: %f",
+   dsLCD->PrintfLine(DriverStationLCD::kUser_Line3, "H: %f", height);
+   dsLCD->PrintfLine(DriverStationLCD::kUser_Line4, "Offset: %f", offset);
+   dsLCD->PrintfLine(DriverStationLCD::kUser_Line5, "Shooter Value: %f",
                      throttleValue);
+   dsLCD->PrintfLine(DriverStationLCD::kUser_Line6, "Speed: %f", speed);
    dsLCD->UpdateLCD();
 }
 
@@ -75,7 +75,7 @@ void DashboardDataFormat::SendVisionData()
    dash.Finalize();
 }
 
-void DashboardDataFormat::SendIOPortData()
+void DashboardDataFormat::SendIOPortData(bool bottomPosition, float position, float frontDistance, float backDistance)
 {
    Dashboard &dash = DriverStation::GetInstance()->GetLowPriorityDashboardPacker();
 
@@ -200,8 +200,12 @@ void DashboardDataFormat::SendIOPortData()
 
       // Can't read solenoids without an instance of the object
       dash.AddU8((char) 0);
+      
+      dash.AddBoolean(bottomPosition);
+      dash.AddFloat(position);
+      dash.AddFloat(frontDistance);
+      dash.AddFloat(backDistance);
    }
-
    dash.FinalizeCluster();
    dash.Finalize();
 }
