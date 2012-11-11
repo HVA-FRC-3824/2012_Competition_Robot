@@ -39,6 +39,10 @@ bool MyRobot::runShooterControl(float defaultVelocity, float defaultVoltage)
    double valueToRotate    = 0.0; // The value to rotate the shooter to relative to current position
    double pixelOff;
    
+   //*TESTING
+   Wait(.5);
+   //
+   
    /************************ Check Shooting Wheel Mode **************************/
    // determine the control panel shooter mode
    if (m_driverStationEnhancedIO->GetDigital(SHOOTER_VOLTAGE_MODE) == true)
@@ -62,7 +66,7 @@ bool MyRobot::runShooterControl(float defaultVelocity, float defaultVoltage)
 
    /************************ Check if Image data is needed **********************/
    // Check to see if the shooter is to be controled by the robot or by the operators
-   if (m_driverStationEnhancedIO->GetDigital(AUTONOMOUSLY_RUN_SHOOTER) == true && m_ferrisState == kStop)
+   if (m_driverStationEnhancedIO->GetDigital(AUTONOMOUSLY_RUN_SHOOTER) == true)
    {
       // Process the camera images
       // Note: All method parameters are outputs

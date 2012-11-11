@@ -191,12 +191,15 @@ typedef enum {
 class MyRobot: public SimpleRobot
 {
 public:
-   static void ferrisHandler(uint32_t mask, void *param)
+   static void ferrisHandler(UINT32 robotID)
    {
-      MyRobot *robot = (MyRobot*)param;
+      MyRobot *robot = (MyRobot*)robotID;
+      //robot->m_ferrisWheelStop->WaitForInterrupt(5);
+      while(robot->m_ferrisWheelStop->Get());
+      {}
       robot->m_ferrisWheel->Set(0.0);
       robot->runFerrisWheel(kStop);
-      robot->m_ferrisWheelStop->DisableInterrupts();
+      //robot->m_ferrisWheelStop->DisableInterrupts();
    }
 
    MyRobot(void);
@@ -246,6 +249,7 @@ private:
    DriverStation             *m_driverStation; // Driver Station
    DriverStationEnhancedIO   *m_driverStationEnhancedIO; // Enhanced Driver Station
    HVA_PIDOutput             *m_pidOutput; // object that handles the output of the PID controller
+   Task                      *m_ferrisInterruptHandler;
 
    double heightOfTriangle; // Height used for controling shooter velocity
    float m_rotation;        // rotation to drive

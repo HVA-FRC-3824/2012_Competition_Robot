@@ -36,14 +36,12 @@ MyRobot::MyRobot(void)
    m_driverStation = DriverStation::GetInstance();
    m_driverStationEnhancedIO = &DriverStation::GetInstance()->GetEnhancedIO();
    AxisCamera &camera = AxisCamera::GetInstance();
+   m_ferrisInterruptHandler = new Task("FerrisInterruptHandler", (FUNCPTR)ferrisHandler, 0);
 
    /******************************* Setup ********************************/
    // Set the State Enums for the robot
    m_ferrisState = kStop;
    m_runningAutonomous = false;
-
-   // setup the ferris wheel location switch interrupt
-   m_ferrisWheelStop->RequestInterrupts(MyRobot::ferrisHandler, this);
 
    // Set up the bottom analog trigger
    m_bottomBallSensor->SetLimitsVoltage(4, 8);
@@ -320,7 +318,10 @@ void MyRobot::runFerrisWheel(FerrisState state)
    if ((state != kStop) && ((Timer::GetFPGATimestamp() - time)
          >= TIME_TILL_INTERRUPT_ENABLE))
    {
+      printf("Stated Task");
       m_ferrisWheelStop->EnableInterrupts();
+      //m_ferrisWheelStop->RequestInterrupts();
+      m_ferrisInterruptHandler->Start((UINT32)this);
    }
 
    switch (state)
