@@ -39,10 +39,6 @@ bool MyRobot::runShooterControl(float defaultVelocity, float defaultVoltage)
    double valueToRotate    = 0.0; // The value to rotate the shooter to relative to current position
    double pixelOff;
    
-   //*TESTING
-   Wait(.5);
-   //
-   
    /************************ Check Shooting Wheel Mode **************************/
    // determine the control panel shooter mode
    if (m_driverStationEnhancedIO->GetDigital(SHOOTER_VOLTAGE_MODE) == true)
@@ -66,7 +62,7 @@ bool MyRobot::runShooterControl(float defaultVelocity, float defaultVoltage)
 
    /************************ Check if Image data is needed **********************/
    // Check to see if the shooter is to be controled by the robot or by the operators
-   if (m_driverStationEnhancedIO->GetDigital(AUTONOMOUSLY_RUN_SHOOTER) == true)
+   if (m_driverStationEnhancedIO->GetDigital(AUTONOMOUSLY_RUN_SHOOTER) == true && m_ferrisState == kStop)
    {
       // Process the camera images
       // Note: All method parameters are outputs
@@ -159,18 +155,18 @@ bool MyRobot::runShooterControl(float defaultVelocity, float defaultVoltage)
         ((m_shooterWheel->GetControlMode() == CANJaguar::kSpeed) &&
          (fabs(m_shooterWheel->GetSpeed() - m_shooterWheel->Get()) < VELOCITY_THRESHOLD))))
    {
-      readyToFire = true;
+      m_readyToFire = true;
       m_driverStationEnhancedIO->SetDigitalOutput(READY_TO_FIRE_LED, true);
    }
 
    // not ready to shoot (wheel is not at proper velocity
    else
    {
-      readyToFire = false;
+      m_readyToFire = false;
       m_driverStationEnhancedIO->SetDigitalOutput(READY_TO_FIRE_LED, false);
    }
 
-   return readyToFire;
+   return m_readyToFire;
 }
 
 /**
@@ -454,7 +450,6 @@ void MyRobot::setWheelBasedOnTargets(float voltageToDriveShooter, float velocity
       if (m_driverStationEnhancedIO->GetDigital(SHOOTER_WHEEL_OVERRIDE) == false)
       {
          // direct set from targets
-         printf("Setting Shooter SetPoint\n");
          m_shooterWheel->Set(velocityToDriveShooter);
       }
 

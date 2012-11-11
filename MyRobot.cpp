@@ -36,12 +36,17 @@ MyRobot::MyRobot(void)
    m_driverStation = DriverStation::GetInstance();
    m_driverStationEnhancedIO = &DriverStation::GetInstance()->GetEnhancedIO();
    AxisCamera &camera = AxisCamera::GetInstance();
-   m_ferrisInterruptHandler = new Task("FerrisInterruptHandler", (FUNCPTR)ferrisHandler, 0);
 
    /******************************* Setup ********************************/
    // Set the State Enums for the robot
    m_ferrisState = kStop;
    m_runningAutonomous = false;
+   m_readyToFire = false;
+   m_middleBallSensor = false;
+   m_topBallSensor = false;
+
+   // setup the ferris wheel location switch interrupt
+   m_ferrisWheelStop->RequestInterrupts(MyRobot::ferrisHandler, this);
 
    // Set up the bottom analog trigger
    m_bottomBallSensor->SetLimitsVoltage(4, 8);
@@ -192,8 +197,6 @@ void MyRobot::runDriveControl()
    // if the trigger is pulled then drive up the ramp and balance (while the trigger is pulled)
    if (m_joystick->GetTrigger() == true)
    {
-      printf("Previous triggerstate:%i\n", previousTriggerState);
-
       // bridge balancing mode
       runBridgeBalancingMode(previousTriggerState);
 
@@ -308,8 +311,6 @@ void MyRobot::runFerrisWheel(FerrisState state)
    static FerrisState previousState = kStop;
    static double time = Timer::GetFPGATimestamp();
 
-   m_ferrisState = state;
-
    if ((state != previousState) && (state != kStop))
    {
       time = Timer::GetFPGATimestamp();
@@ -318,26 +319,38 @@ void MyRobot::runFerrisWheel(FerrisState state)
    if ((state != kStop) && ((Timer::GetFPGATimestamp() - time)
          >= TIME_TILL_INTERRUPT_ENABLE))
    {
-      printf("Stated Task");
       m_ferrisWheelStop->EnableInterrupts();
-      //m_ferrisWheelStop->RequestInterrupts();
-      m_ferrisInterruptHandler->Start((UINT32)this);
    }
 
    switch (state)
    {
    case kForward:
-      m_ferrisWheel->Set(FERRIS_ROTATE_SPEED);
+      if (m_ferrisState != kForward)
+      {
+         m_topBallSensor = m_middleBallSensor;
+         m_middleBallSensor = m_bottomBallSensor->GetTriggerState();
+         m_ferrisWheel->Set(FERRIS_ROTATE_SPEED);
+      }
       break;
 
    case kBackward:
-      m_ferrisWheel->Set(-FERRIS_ROTATE_SPEED);
+      if (m_ferrisState != kBackward)
+      {
+         m_middleBallSensor = m_topBallSensor;
+         m_ferrisWheel->Set(-FERRIS_ROTATE_SPEED);
+      }
       break;
 
    case kStop:
-      m_ferrisWheel->Set(0.0f);
+      if (m_ferrisState != kBackward)
+      {
+         m_ferrisWheel->Set(0.0f);
+      }
       break;
    }
+
+   // Set the ferris wheel state at the end so that the previous state can be used.
+   m_ferrisState = state;
 }
 
 /**
@@ -388,6 +401,7 @@ void MyRobot::runBallShooter(void)
 {
    if (m_driverStationEnhancedIO->GetDigital(BALL_LIFT_SHOOT) == true)
    {
+      m_topBallSensor = false;
       m_ballLiftSolenoid->Set(DoubleSolenoid::kForward);
    }
    else
@@ -477,7 +491,8 @@ void MyRobot::sendDashboardData()
          !m_bottomBallSensor->GetTriggerState(),
          m_shooterRotate->GetPosition(), m_frontUltra->GetRangeInches(),
          m_backUltra->GetRangeInches(), m_gyroHorizontal->GetAngle(),
-         -m_gyroVertical->GetAngle(), m_shooterWheel->GetOutputVoltage());
+         -m_gyroVertical->GetAngle(), m_shooterWheel->GetOutputVoltage(),
+         m_readyToFire, m_middleBallSensor, m_topBallSensor);
    m_dashboardDataFormat->SendVisionData();
 }
 

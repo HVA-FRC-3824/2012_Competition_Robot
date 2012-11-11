@@ -25,7 +25,6 @@ HVA_CANJaguar::HVA_CANJaguar(UINT8 deviceNumber, HVA_ControlMode controlMode) :
 void HVA_CANJaguar::ChangeControlMode(HVA_ControlMode controlMode)
 {
    m_HVA_controlMode = controlMode;
-   printf("In Change hva_controlmode:%i", m_HVA_controlMode);
 
    if(controlMode == kCurrentSpeed)
    {

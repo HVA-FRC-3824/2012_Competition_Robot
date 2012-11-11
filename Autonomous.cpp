@@ -113,12 +113,8 @@ void MyRobot::Autonomous()
       float distanceToDrive = -((m_backUltra->GetRangeInches()
             - DISTANCE_TO_BRIDGE) / 12.0);
 
-      printf("Distance to drive back: %f\n", distanceToDrive);
-
       // Drive to the center bridge
       driveAndRunShooter(distanceToDrive);
-
-      printf("DumpingBridge\n");
 
       // Dump the bridge
       dumpBridge();
@@ -130,8 +126,6 @@ void MyRobot::Autonomous()
       // Drive to shooting position then shoot
       distanceToDrive = (m_frontUltra->GetRangeInches()
             - DISTANCE_TO_SHOOTING_POSITION_HIGH) / 12.0;
-
-      printf("Distance to drive forward: %f\n", distanceToDrive);
 
       // drive to the shooting position
       // Note: calls runShooterControl for aiming and keeps the shooter running
@@ -199,6 +193,36 @@ void MyRobot::Autonomous()
 
    case 7:
    {
+      // Drive Dump Balls Center Bridge Drive Forward and Shoot Balls
+      
+      float distanceToDrive;
+
+      // Drive to shooting position then shoot
+      distanceToDrive = (m_frontUltra->GetRangeInches()
+            - DISTANCE_TO_SHOOTING_POSITION_HIGH) / 12.0;
+
+      // drive to the shooting position
+      // Note: calls runShooterControl for aiming and keeps the shooter running
+      driveAndRunShooter(distanceToDrive, 0.4, VELOCITY_TO_SHOOTING_POSITION_HIGH, VOLTAGE_TO_SHOOTING_POSITION_HIGH);
+
+      // shoot 2 balls
+      shootTwoBalls(VELOCITY_TO_SHOOTING_POSITION_HIGH, VOLTAGE_TO_SHOOTING_POSITION_HIGH);
+      
+      // Drive back to the original position.
+      driveAndRunShooter(-(distanceToDrive + 1), 0.4);
+
+      // Calculate the distance to the bridge
+      // Drive to shooting position then shoot
+      // Make distance negative so that the robot will drive backwards
+      distanceToDrive = -((m_backUltra->GetRangeInches()
+            - DISTANCE_TO_BRIDGE) / 12.0);
+
+      // Drive to the center bridge
+      driveAndRunShooter(distanceToDrive);
+
+      // Dump the bridge
+      dumpBridge();
+
       break;
    }
 
@@ -419,8 +443,6 @@ void MyRobot::dumpBridge(float timeToHoldDownBridge,
       switch (autoState)
       {
       case kBaseMoving:
-         printf("kBaseMoving\n");
-         
          // Extend the ramp extender
          if (m_rampExtender->Get() != DoubleSolenoid::kForward)
             m_rampExtender->Set(DoubleSolenoid::kForward);
@@ -434,7 +456,6 @@ void MyRobot::dumpBridge(float timeToHoldDownBridge,
          break;
 
       case kPusherDown:
-         printf("kPusherDown\n");
          // Extend the pusher
          if (m_rampPusher->Get() != DoubleSolenoid::kForward)
             m_rampPusher->Set(DoubleSolenoid::kForward);
@@ -448,7 +469,6 @@ void MyRobot::dumpBridge(float timeToHoldDownBridge,
          break;
 
       case kPusherMoving:
-         printf("kPusherMoving\n");
          // Retrack the pusher
          if (m_rampPusher->Get() != DoubleSolenoid::kReverse)
             m_rampPusher->Set(DoubleSolenoid::kReverse);
