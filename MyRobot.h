@@ -180,17 +180,17 @@ private:
    ControlState shooterRotationControlState;
 
    DashboardDataFormat *m_dashboardDataFormat; // object to send data to the Driver station
-   //CANJaguar *m_rightMotor; // Right drive motor
-   //CANJaguar *m_leftMotor; // Left drive motor
+   CANJaguar *m_rightMotor; // Right drive motor
+   CANJaguar *m_leftMotor; // Left drive motor
    CurrentVelocityController *m_rightMotorVelocityPID; // Right Motor controlled by PID
    CurrentVelocityController *m_leftMotorVelocityPID; // left Motor controlled by PID
-   //CANJaguar *m_shooterWheel; // Shooter fly wheel
-   //CANJaguar *m_shooterRotate; // Motor used to rotate shooter
+   CANJaguar *m_shooterWheel; // Shooter fly wheel
+   CANJaguar *m_shooterRotate; // Motor used to rotate shooter
    Victor *m_frontBallPickup; // Front ball pick-up motor
    Victor *m_backBallPickup; // Rear ball pick-up moter
    Victor *m_ferrisWheel; // Ball storage wheel
-//   HVA_RobotDrive *m_robotDrive; // robot drive system
-//   HVA_RobotDrive *m_robotDriveVelocityPID; // robot drive system controlled by PID
+   HVA_RobotDrive *m_robotDrive; // robot drive system
+   HVA_RobotDrive *m_robotDriveVelocityPID; // robot drive system controlled by PID
    Compressor *m_compressor; // Compressor
    DoubleSolenoid *m_ballLiftSolenoid; // Ball lift
    DoubleSolenoid *m_frontBridgeWheel; // Front stability wheel

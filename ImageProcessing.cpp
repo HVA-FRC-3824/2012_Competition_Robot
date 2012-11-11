@@ -96,7 +96,7 @@ int IVA_ProcessImage(Image *image,
    // Initializes internal data (buffers and array of points for caliper measurements)
    VisionErrChk(ivaData = IVA_InitData(4, 0));
 
-   VisionErrChk(IVA_CLRThreshold(image, 203, 255, 200, 255, 190, 255,
+   VisionErrChk(IVA_CLRThreshold(image, 0, 170, 210, 255, 140, 255,
                IMAQ_RGB));
 
    //-------------------------------------------------------------------//

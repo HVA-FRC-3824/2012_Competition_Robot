@@ -165,9 +165,6 @@ void HVA_PIDController::CalculatePID()
             }
          }
 
-//         printf("***\n");
-//         printf("S: %f  I: %f  E: %f\n", m_setpoint, input, m_error);
-
          if (m_error > NO_PID_BAND)
          {
              m_result = NO_PID_TURN_POWER;
@@ -206,11 +203,6 @@ void HVA_PIDController::CalculatePID()
                m_result = (m_P * m_error)         +
                           (m_I * m_integralError) +
                           (m_D * (m_error - m_previousError));
-
-//printf("Integral: %f\n", m_integralError);
-//printf("P: %f  I: %f  D: %f\n", m_P * m_error,
-//                               m_I * m_integralError,
-//                             m_D * (m_error - m_previousError));
             }
          }
 
@@ -230,8 +222,6 @@ void HVA_PIDController::CalculatePID()
          result = m_result;
       }
       END_REGION;
-
-//printf("O: %f\n", result);
 
       // update the PID output
       pidOutput->PIDWrite(result);
