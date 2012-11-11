@@ -247,7 +247,7 @@ void MyRobot::autonomouslyDriveShooter(int targetStatus,
       double valueToRotate)
 {
    // Set the Voltage output for the wheel if the Override is off
-   if (m_driverStationEnhancedIO->GetDigital(SHOOTER_WHEEL_OVERRIDE) == false || IsAutonomous() == true)
+   if (m_driverStationEnhancedIO->GetDigital(SHOOTER_WHEEL_OVERRIDE) == false)
    {
       m_shooterWheel->Set(voltageToDriveShooter);
    }

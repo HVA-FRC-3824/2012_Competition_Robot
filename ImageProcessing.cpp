@@ -75,11 +75,11 @@ int IVA_ProcessImage(Image *image,
    int success = 1;
    IVA_Data *ivaData;
    int pParameter[1] =
-   { 35 };
+   { 38 };
    float plower[1] =
    { 0 };
    float pUpper[1] =
-   { 2000 };
+   { 500 };
    int pCalibrated[1] =
    { 0 };
    int pExclude[1] =

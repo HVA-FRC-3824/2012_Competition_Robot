@@ -3,8 +3,8 @@
 #define MIN_SPINUP_TIME             4
 #define AUTO_MAX_SPEED             .2
 // TODO - Determin distances
-#define DISTANCE_TO_CENTER_BRIDGE   5
-#define DISTANCE_TO_ALLIANCE_BRIDGE 5
+#define DISTANCE_TO_CENTER_BRIDGE   0
+#define DISTANCE_TO_ALLIANCE_BRIDGE 0
 #define TIME_TO_DUMP_BRIDGE         2
 
 /**
@@ -351,7 +351,7 @@ void MyRobot::dumpBridge()
    double time = Timer::GetFPGATimestamp();
    
    // Lower Stability wheel
-   stabilityWheelState = kBackDeployed;
+   stabilityWheelState = kFrontDeployed;
    runStabilityWheels();
    
    while ((Timer::GetFPGATimestamp() - time) < TIME_TO_DUMP_BRIDGE)
