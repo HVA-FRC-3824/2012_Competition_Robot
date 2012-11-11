@@ -18,7 +18,7 @@ void MyRobot::Autonomous()
    m_shooterRotate->EnableControl();
    m_shooterWheel->EnableControl();
    
-   double time;
+   double time = Timer::GetFPGATimestamp();
 
    // Combined the autonomous switchs into one value
    int autoSwitchValue = (m_buttonBox->GetRawButton(AUTO_SWITCH_2) << 2)
@@ -183,7 +183,7 @@ void MyRobot::shootOneBall()
       switch (autoState)
       {
       case AIMING:
-         if (cameraControl())
+         if (cameraControl() || (Timer::GetFPGATimestamp() - time) > 2)
          {
             autoState = SHOOT_FIRST_BALL;
             m_ballLiftSolenoid->Set(DoubleSolenoid::kForward);
@@ -219,7 +219,7 @@ void MyRobot::shootTwoBalls()
       switch (autoState)
       {
       case AIMING:
-         if (cameraControl())
+         if (cameraControl() || (Timer::GetFPGATimestamp() - time) > 2)
          {
             autoState = SHOOT_FIRST_BALL;
             m_ballLiftSolenoid->Set(DoubleSolenoid::kForward);

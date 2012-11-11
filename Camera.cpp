@@ -26,14 +26,14 @@ bool MyRobot::cameraControl(void)
 {
    int targetStatus; // Is the target found by the robot
    double distanceToTarget; // The distance from the targets
-   static double voltageToDriveShooter; // The voltage to drive the shooter
+   static double voltageToDriveShooter = DEFAULT_AUTONOMOUS_VOLTAGE; // The voltage to drive the shooter
    double valueToRotate; // The value to rotate the shooter to relative to current position
    double previousGyro = m_gyroHorizontal->GetAngle();
    double pixelOff;
 
    // Check to see if the shooter is to be controled by the robot or by the operators
-   if ((m_driverStationEnhancedIO->GetDigital(AUTONOMOUSLY_RUN_SHOOTER) == true)
-         || (IsAutonomous() == true))
+   if (m_driverStationEnhancedIO->GetDigital(AUTONOMOUSLY_RUN_SHOOTER)
+         == true || IsAutonomous() == true)
    {
       // Process the camera images
       targetStatus = readCamera(heightOfTriangle, distanceToTarget,
@@ -44,29 +44,13 @@ bool MyRobot::cameraControl(void)
             * GYRO_CONVERSION;
       previousGyro = m_gyroHorizontal->GetAngle();
 
-      // Check the rotation override switches, Check to see if operator control
-      if ((m_driverStationEnhancedIO->GetDigital(ROTATION_OVERRIDE) == true)
-            && (IsOperatorControl() == true))
-      {
-         shooterRotationControlState = kTeleoperated;
-      }
-      else
-      {
-         shooterRotationControlState = kAutonomous;
-      }
-
       // Control the Shooter Autonomously
       autonomouslyDriveShooter(targetStatus, distanceToTarget,
             voltageToDriveShooter, valueToRotate);
    }
-   else
-   {
-      // Set the state of the rotation
-      shooterRotationControlState = kTeleoperated;
-   }
 
    if ((fabs(pixelOff) < PIXEL_OFF_THRESHOLD) && (fabs(
-         m_shooterWheel->GetOutputVoltage() - voltageToDriveShooter)
+         m_shooterWheel->GetOutputVoltage() - m_shooterWheel->Get())
          < VOLTAGE_THRESHOLD))
    {
       readyToFire = true;
@@ -92,6 +76,8 @@ int MyRobot::readCamera(double &heightOfTriangle, double &distanceToTarget,
 {
    int targetStatus = 0; // Is the target found by the robot
 
+   printf("In read\n");
+   
    // Get the camera instance.
    AxisCamera &camera = AxisCamera::GetInstance();
 
@@ -209,10 +195,22 @@ int MyRobot::readCamera(double &heightOfTriangle, double &distanceToTarget,
                               / 2.0), 2.0));
 
       // Calculate the voltage to drive the shooter
-
-      voltageToDriveShooter = (-0.00001894 * pow(heightOfTriangle, 3))
-            + (0.00602003 * pow(heightOfTriangle, 2)) + (-0.64413759
-            * heightOfTriangle) + SHOOTER_VOLTAGE_OFFSET;
+      if (IsOperatorControl())
+      {
+         voltageToDriveShooter = (-0.00001894 * pow(heightOfTriangle, 3))
+               + (0.00602003 * pow(heightOfTriangle, 2)) + (-0.64413759
+               * heightOfTriangle) + SHOOTER_VOLTAGE_OFFSET;
+      }
+      else // In Autonomous
+      {
+         int cameraValue = (-0.00001894 * pow(heightOfTriangle, 3))
+               + (0.00602003 * pow(heightOfTriangle, 2)) + (-0.64413759
+               * heightOfTriangle) + SHOOTER_VOLTAGE_OFFSET;
+         if ((targetStatus == 0) && (cameraValue
+               >= MIN_SHOOTER_VOLTAGE_AUTONOMOUS) && (cameraValue
+               <= MAX_SHOOTER_VOLTAGE_AUTONOMOUS))
+            voltageToDriveShooter = cameraValue;
+      }
 
    }
    // Calculate the value to rotate if a target was found
@@ -232,8 +230,8 @@ int MyRobot::readCamera(double &heightOfTriangle, double &distanceToTarget,
    {
       pixelOff = ((results[TOP_TARGET][CENTER_OF_MASS_X_INDEX] + PIXEL_OFFSET)
             - (320 / 2));
-      printf("Pixel Off: %f\n\n", pixelOff);
       valueToRotate = pixelOff * PIXEL_CONVERSION;
+      printf("Pixel Off: %f\nValue to Rotate: %f\n\n", pixelOff, valueToRotate);
    }
 
    return targetStatus;
@@ -247,7 +245,8 @@ void MyRobot::autonomouslyDriveShooter(int targetStatus,
       double valueToRotate)
 {
    // Set the Voltage output for the wheel if the Override is off
-   if (m_driverStationEnhancedIO->GetDigital(SHOOTER_WHEEL_OVERRIDE) == false || IsAutonomous() == true)
+   if (m_driverStationEnhancedIO->GetDigital(SHOOTER_WHEEL_OVERRIDE) == false
+         || IsAutonomous() == true)
    {
       m_shooterWheel->Set(voltageToDriveShooter);
    }
@@ -263,10 +262,11 @@ void MyRobot::autonomouslyDriveShooter(int targetStatus,
                   * ((MAX_SHOOTER_VOLTAGE_ADJUSTMENT) / (MAX_POT_VALUE
                         - MID_POT_VALUE))));
    }
-   
+
    // Only run the rotation of the shooter if the mode is Autonomous
    if (shooterRotationControlState == kAutonomous)
    {
+      printf("value to rotate:%f\n", valueToRotate);
       // Set the Rotational value for the shooter
       double rotationValue = m_shooterRotate->GetPosition() + valueToRotate;// + PIXEL_OFFSET;
 

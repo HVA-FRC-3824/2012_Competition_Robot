@@ -221,6 +221,18 @@ void MyRobot::readOperatorControls()
             (float) (m_joystick->GetThrottle() * ROTATE_REDUCE_FACTOR),
             (float) MAX_ACCELERATION_ARCADE, 2.0f);
    }
+   
+   /************************ Check Rotation Override Switch *******************/
+   // Check the rotation override switches, Check to see if operator control
+   if ((m_driverStationEnhancedIO->GetDigital(ROTATION_OVERRIDE) == true)
+         && (IsOperatorControl() == true))
+   {
+      shooterRotationControlState = kTeleoperated;
+   }
+   else
+   {
+      shooterRotationControlState = kAutonomous;
+   }
 
    /************************ Run Stability Wheels *****************************/
    setStabilityWheelState();
@@ -228,13 +240,11 @@ void MyRobot::readOperatorControls()
 
    /************************ RUN ShootingWheel ********************************/
    // drive the shooter manually if the cammera tracking is disabled or the full override is called
-   if (((m_driverStationEnhancedIO->GetDigital(AUTONOMOUSLY_RUN_SHOOTER)
-         == false) && (m_driverStationEnhancedIO->GetDigital(
-         SHOOTER_WHEEL_OVERRIDE) == true))
-         || ((m_driverStationEnhancedIO->GetDigital(SHOOTER_WHEEL_OVERRIDE_MODE)
+   if (((m_driverStationEnhancedIO->GetDigital(SHOOTER_WHEEL_OVERRIDE_MODE)
                == true) && (m_driverStationEnhancedIO->GetDigital(
                SHOOTER_WHEEL_OVERRIDE) == true)))
    {
+      printf("Volt Over\n");
       m_shooterWheel->Set(
             (((m_driverStationEnhancedIO->GetAnalogIn(SHOOTER_VELOCITY_POT)
                   / MAX_POT_VALUE) * (MAX_SHOOTER_SPEED_PERCENT
@@ -245,6 +255,7 @@ void MyRobot::readOperatorControls()
          == false) && (m_driverStationEnhancedIO->GetDigital(
          SHOOTER_WHEEL_OVERRIDE) == false))
    {
+      printf("Stop\n");
       m_shooterWheel->Set(0.0f);
    }
 
