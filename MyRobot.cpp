@@ -406,23 +406,21 @@ void MyRobot::readOperatorControls()
  */
 void MyRobot::runStabilityWheels()
 {
-   printf("Front Switch: %i\n", m_frontBridgeWheelLimit->Get());
-   printf("Back Switch: %i\n", m_backBridgeWheelLimit->Get());
    switch (stabilityWheelState)
    {
    case kFrontDeployed:
-      if (m_backBridgeWheelLimit->Get() == true)
-      {
+//      if (m_backBridgeWheelLimit->Get() == true)
+//      {
          m_frontBridgeWheel->Set(DoubleSolenoid::kForward);
-      }
+//      }
       m_backBridgeWheel->Set(DoubleSolenoid::kReverse);
       break;
    case kBackDeployed:
       m_frontBridgeWheel->Set(DoubleSolenoid::kReverse);
-      if (m_frontBridgeWheelLimit->Get() == true)
-      {
+//      if (m_frontBridgeWheelLimit->Get() == true)
+//      {
          m_backBridgeWheel->Set(DoubleSolenoid::kForward);
-      }
+//      }
       break;
    case kNeitherDeployed:
       m_frontBridgeWheel->Set(DoubleSolenoid::kReverse);

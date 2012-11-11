@@ -18,6 +18,7 @@
  *    Custom 6 - Added autonomous code and revised the ramp control. (Outdated)
  *    Custom 7 - Added new equation for voltage. (Stable)
  *    Custom 8 - Added balencing code to the autonomous. (Testing/Stable)
+ *    Custom 9 - Added code to change the offsets of the shooter based on the height difference of the targets. (Experimental)
  *    
  *    note:
  *       174 inch for 10 rev
@@ -120,12 +121,12 @@
 #define ROTATE_CONTROLLER_P              4000
 #define ROTATE_CONTROLLER_I              0.2
 #define VALUE_TO_INCRESS_I                .01
-#define INCRESSED_I_VALUE                1.0
+#define INCRESSED_I_VALUE                10.0
 #define ROTATE_CONTROLLER_D              10.0
 
-#define MOTOR_VELOCITY_P                 2.0
-#define MOTOR_VELOCITY_I                 0.1
-#define MOTOR_VELOCITY_D                 0.5
+#define MOTOR_VELOCITY_P                          2.0
+#define MOTOR_VELOCITY_I                          0.1
+#define MOTOR_VELOCITY_D                          0.5
 
 /******************************************************************************/
 
@@ -196,14 +197,14 @@ private:
    
    // Process the camera images
    int readCamera(double &heightOfTriangle, double &distanceToTarget,
-         double &voltageToDriveShooter, double &valueToRotate, double &pixelOff);
+         double &voltageToDriveShooter, double &valueToRotate, double &pixelOff, double &horizontalDifference);
    
    // Sort the target array
    void sortTargetArray(double targets[NUMBER_OF_TARGETS][NUMBER_OF_TARGET_PARAMETERS]);
    
    // Drive the shooter autonomously
    void autonomouslyDriveShooter(int targetStatus, double distanceToTarget,
-                                 double voltageToDriveShooter, double valueToRotate);
+                                 double voltageToDriveShooter, double valueToRotate, double horizontalDifference);
    
    /************************ Autonomous Moves *********************************/
    void driveStraightForDistance();
