@@ -3,8 +3,6 @@
 /*************************** Camera / Shooter Defines *************************/
 #define NO_TARGET                 -999999.0f
 #define SHOOTER_SPEED_CHANGE              .2
-#define MINIMUM_ROTATION_OF_SHOOTER      -.3
-#define MAXIMUM_ROTATION_OF_SHOOTER       .3
 
 /* Conversion Defines */
 #define GYRO_CONVERSION               0.0044
@@ -33,33 +31,28 @@ bool MyRobot::cameraControl(void)
    double previousGyro = m_gyroHorizontal->GetAngle();
    double pixelOff;
 
-   // Process the camera images
-   targetStatus = readCamera(heightOfTriangle, distanceToTarget,
-         voltageToDriveShooter, valueToRotate, pixelOff);
-
-   // Add to the rotate value based off the gyro
-   valueToRotate += (previousGyro - m_gyroHorizontal->GetAngle())
-         * GYRO_CONVERSION;
-   previousGyro = m_gyroHorizontal->GetAngle();
-
    // Check to see if the shooter is to be controled by the robot or by the operators
-   if ((m_driverStation->GetDigitalIn(AUTONOMOUSLY_RUN_SHOOTER) == 0) || (IsAutonomous()
-         == true))
+   if ((m_driverStationEnhancedIO->GetDigital(AUTONOMOUSLY_RUN_SHOOTER) == true)
+         || (IsAutonomous() == true))
    {
-      // change the modes of the jaguars
-      if ((m_shooterWheel->GetControlMode() != CANJaguar::kVoltage)
-            || (m_shooterRotate->GetControlMode() != CANJaguar::kPosition))
-      {
-         // Set up the Shooter Jaguar
-         m_shooterWheel->ChangeControlMode(CANJaguar::kVoltage);
-         m_shooterWheel->Set(0.0f);
-         m_shooterWheel->EnableControl();
+      // Process the camera images
+      targetStatus = readCamera(heightOfTriangle, distanceToTarget,
+            voltageToDriveShooter, valueToRotate, pixelOff);
 
-         // Set up the Rotate Jaguar
-         m_shooterRotate->ChangeControlMode(CANJaguar::kPosition);
-         m_shooterRotate->SetPID(ROTATE_CONTROLLER_P, ROTATE_CONTROLLER_I, ROTATE_CONTROLLER_D);
-         m_shooterRotate->Set(m_shooterRotate->GetPosition());
-         m_shooterRotate->EnableControl();
+      // Add to the rotate value based off the gyro
+      valueToRotate += (previousGyro - m_gyroHorizontal->GetAngle())
+            * GYRO_CONVERSION;
+      previousGyro = m_gyroHorizontal->GetAngle();
+
+      // Check the rotation override switches, Check to see if operator control
+      if ((m_driverStationEnhancedIO->GetDigital(ROTATION_OVERRIDE) == true)
+            && (IsOperatorControl() == true))
+      {
+         shooterRotationControlState = kTeleoperated;
+      }
+      else
+      {
+         shooterRotationControlState = kAutonomous;
       }
 
       // Control the Shooter Autonomously
@@ -68,31 +61,21 @@ bool MyRobot::cameraControl(void)
    }
    else
    {
-      // Change the modes of the modes of the jaguars
-      if ((m_shooterWheel->GetControlMode() != CANJaguar::kPercentVbus)
-            || (m_shooterRotate->GetControlMode() != CANJaguar::kPercentVbus))
-      {
-         // Set up the Shooter Jaguar
-         m_shooterWheel->ChangeControlMode(CANJaguar::kPercentVbus);
-         m_shooterWheel->Set(0.0f);
-         m_shooterWheel->EnableControl();
-
-         // Set up the Rotate Jaguar
-         m_shooterRotate->ChangeControlMode(CANJaguar::kPercentVbus);
-         m_shooterRotate->Set(0.0f);
-         m_shooterRotate->EnableControl();
-      }
+      // Set the state of the rotation
+      shooterRotationControlState = kTeleoperated;
    }
-   
+
    if ((fabs(pixelOff) < PIXEL_OFF_THRESHOLD) && (fabs(
          m_shooterWheel->GetOutputVoltage() - voltageToDriveShooter)
          < VOLTAGE_THRESHOLD))
    {
       readyToFire = true;
+      m_driverStationEnhancedIO->SetDigitalOutput(READY_TO_FIRE_LED, true);
    }
    else
    {
       readyToFire = false;
+      m_driverStationEnhancedIO->SetDigitalOutput(READY_TO_FIRE_LED, false);
    }
    return readyToFire;
 }
@@ -226,13 +209,10 @@ int MyRobot::readCamera(double &heightOfTriangle, double &distanceToTarget,
                               / 2.0), 2.0));
 
       // Calculate the voltage to drive the shooter
-      if (m_buttonBox->GetRawButton(CALCULATE_VOLTAGE) == true)
-      {
-         voltageToDriveShooter = (-0.00001894 * pow(heightOfTriangle, 3)) +
-                                 ( 0.00602003 * pow(heightOfTriangle, 2)) +
-                                 (-0.64413759 * heightOfTriangle) +
-                                 SHOOTER_VOLTAGE_OFFSET;
-      }
+
+      voltageToDriveShooter = (-0.00001894 * pow(heightOfTriangle, 3))
+            + (0.00602003 * pow(heightOfTriangle, 2)) + (-0.64413759
+            * heightOfTriangle) + SHOOTER_VOLTAGE_OFFSET;
 
    }
    // Calculate the value to rotate if a target was found
@@ -250,7 +230,8 @@ int MyRobot::readCamera(double &heightOfTriangle, double &distanceToTarget,
    // Calculate the value to rotate the shooter to.
    if (targetStatus == 0 || targetStatus == 1)
    {
-      pixelOff = ((results[TOP_TARGET][CENTER_OF_MASS_X_INDEX] + PIXEL_OFFSET) - (320 / 2));
+      pixelOff = ((results[TOP_TARGET][CENTER_OF_MASS_X_INDEX] + PIXEL_OFFSET)
+            - (320 / 2));
       printf("Pixel Off: %f\n\n", pixelOff);
       valueToRotate = pixelOff * PIXEL_CONVERSION;
    }
@@ -265,101 +246,87 @@ void MyRobot::autonomouslyDriveShooter(int targetStatus,
       double distanceToTarget, double voltageToDriveShooter,
       double valueToRotate)
 {
-   static float wheelOffset = 0.0;
-   static bool buttonPressedShooterCorrect = false;
-
-   // Set the offset to zero
-   if ((m_buttonBox->GetRawButton(RESET_BALL_OFFSET) == false)
-         && (buttonPressedShooterCorrect == false))
+   // Set the Voltage output for the wheel if the Override is off
+   if (m_driverStationEnhancedIO->GetDigital(SHOOTER_WHEEL_OVERRIDE) == false || IsAutonomous() == true)
    {
-      wheelOffset = 0.0;
-      buttonPressedShooterCorrect = true;
+      m_shooterWheel->Set(voltageToDriveShooter);
    }
-
-   // Increment the offset
-   else if ((m_buttonBox->GetRawButton(INCREMENT_BALL_OFFSET) == true)
-         && (buttonPressedShooterCorrect == false))
+   // Use the pot to adjust the voltage
+   else if ((m_driverStationEnhancedIO->GetDigital(SHOOTER_WHEEL_OVERRIDE)
+         == true) && (m_driverStationEnhancedIO->GetDigital(
+         SHOOTER_WHEEL_OVERRIDE_MODE) == false))
    {
-      wheelOffset += SHOOTER_SPEED_CHANGE;
-      buttonPressedShooterCorrect = true;
+
+      m_shooterWheel->Set(
+            voltageToDriveShooter + ((m_driverStationEnhancedIO->GetAnalogIn(
+                  SHOOTER_VELOCITY_POT) - MID_POT_VALUE)
+                  * ((MAX_SHOOTER_VOLTAGE_ADJUSTMENT) / (MAX_POT_VALUE
+                        - MID_POT_VALUE))));
    }
-
-   // Decrement the offset
-   else if ((m_buttonBox->GetRawButton(DECREMENT_BALL_OFFSET) == true)
-         && (buttonPressedShooterCorrect == false))
-   {
-      wheelOffset -= SHOOTER_SPEED_CHANGE;
-      buttonPressedShooterCorrect = true;
-   }
-
-   else if ((m_buttonBox->GetRawButton(RESET_BALL_OFFSET) != false)
-         && (m_buttonBox->GetRawButton(INCREMENT_BALL_OFFSET) != true)
-         && (m_buttonBox->GetRawButton(DECREMENT_BALL_OFFSET) != true))
-   {
-      buttonPressedShooterCorrect = false;
-   }
-
-   // Set the Voltage output for the wheel
-   m_shooterWheel->Set(voltageToDriveShooter + wheelOffset);
-
-   // Set the Rotational value for the shooter
-   double rotationValue = m_shooterRotate->GetPosition() + valueToRotate;// + PIXEL_OFFSET;
    
-   // <Test>
-   // Incresse I if the goal is close
-   static bool incressedI = false;
-   if(fabs(rotationValue - m_shooterRotate->GetPosition()) < VALUE_TO_INCRESS_I)
+   // Only run the rotation of the shooter if the mode is Autonomous
+   if (shooterRotationControlState == kAutonomous)
    {
-      printf("I: %f\n", m_shooterRotate->GetI());
-      if (incressedI == false)
+      // Set the Rotational value for the shooter
+      double rotationValue = m_shooterRotate->GetPosition() + valueToRotate;// + PIXEL_OFFSET;
+
+      // Incresse I if the goal is close
+      static bool incressedI = false;
+      if (fabs(rotationValue - m_shooterRotate->GetPosition())
+            < VALUE_TO_INCRESS_I)
       {
-         m_shooterRotate->SetPID(m_shooterRotate->GetP(), INCRESSED_I_VALUE, m_shooterRotate->GetD());
-         incressedI = true;
-      }
-   }
-   else
-   {
-      if (incressedI = true)
-      {
-         m_shooterRotate->SetPID(m_shooterRotate->GetP(), ROTATE_CONTROLLER_I, m_shooterRotate->GetD());
-         incressedI = false;
-      }
-   }
-   // </Test>
-   /************* Enable to track target *************************************/
-   if ((rotationValue >= MINIMUM_ROTATION_OF_SHOOTER) && (rotationValue
-         <= MAXIMUM_ROTATION_OF_SHOOTER))
-   {
-      m_shooterRotate->Set(rotationValue);
-   }
-   else
-   {
-      if (rotationValue > MAXIMUM_ROTATION_OF_SHOOTER)
-      {
-         if (targetStatus == 2)
+         printf("I: %f\n", m_shooterRotate->GetI());
+         if (incressedI == false)
          {
-            m_shooterRotate->Set(0.0f);
-            valueToRotate = 0.0f;
-         }
-         else
-         {
-            m_shooterRotate->Set(MAXIMUM_ROTATION_OF_SHOOTER);
+            m_shooterRotate->SetPID(m_shooterRotate->GetP(), INCRESSED_I_VALUE,
+                  m_shooterRotate->GetD());
+            incressedI = true;
          }
       }
       else
       {
-         if (targetStatus == 2)
+         if (incressedI = true)
          {
-            m_shooterRotate->Set(0.0f);
-            valueToRotate = 0.0f;
+            m_shooterRotate->SetPID(m_shooterRotate->GetP(),
+                  ROTATE_CONTROLLER_I, m_shooterRotate->GetD());
+            incressedI = false;
+         }
+      }
+      /************* Enable to track target *************************************/
+      if ((rotationValue >= MINIMUM_ROTATION_OF_SHOOTER) && (rotationValue
+            <= MAXIMUM_ROTATION_OF_SHOOTER))
+      {
+         m_shooterRotate->Set(rotationValue);
+      }
+      else
+      {
+         if (rotationValue > MAXIMUM_ROTATION_OF_SHOOTER)
+         {
+            if (targetStatus == 2)
+            {
+               m_shooterRotate->Set(0.0f);
+               valueToRotate = 0.0f;
+            }
+            else
+            {
+               m_shooterRotate->Set(MAXIMUM_ROTATION_OF_SHOOTER);
+            }
          }
          else
          {
-            m_shooterRotate->Set(MINIMUM_ROTATION_OF_SHOOTER);
+            if (targetStatus == 2)
+            {
+               m_shooterRotate->Set(0.0f);
+               valueToRotate = 0.0f;
+            }
+            else
+            {
+               m_shooterRotate->Set(MINIMUM_ROTATION_OF_SHOOTER);
+            }
          }
       }
+      /******************************************************************************/
    }
-   /******************************************************************************/
 }
 
 /**

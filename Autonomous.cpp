@@ -1,10 +1,10 @@
 #include "MyRobot.h"
 
 #define MIN_SPINUP_TIME             4
-// TODO - Determin distances
 #define AUTO_MAX_SPEED             .2
-#define DISTANCE_TO_CENTER_BRIDGE   0
-#define DISTANCE_TO_ALLIANCE_BRIDGE 0
+// TODO - Determin distances
+#define DISTANCE_TO_CENTER_BRIDGE   5
+#define DISTANCE_TO_ALLIANCE_BRIDGE 5
 #define TIME_TO_DUMP_BRIDGE         2
 
 /**
@@ -21,9 +21,9 @@ void MyRobot::Autonomous()
    double time;
 
    // Combined the autonomous switchs into one value
-   int autoSwitchValue = (m_driverStation->GetDigitalIn(AUTO_SWITCH_2) << 2)
-         + (m_driverStation->GetDigitalIn(AUTO_SWITCH_1) << 1)
-         + m_driverStation->GetDigitalIn(AUTO_SWITCH_0);
+   int autoSwitchValue = (m_buttonBox->GetRawButton(AUTO_SWITCH_2) << 2)
+         + (m_buttonBox->GetRawButton(AUTO_SWITCH_1) << 1)
+         + m_buttonBox->GetRawButton(AUTO_SWITCH_0);
 
    printf("Auto mode: %i\n", autoSwitchValue);
 
@@ -74,6 +74,9 @@ void MyRobot::Autonomous()
       driveToAllianceBridge();
       dumpBridge();
       break;
+   case 7:
+      // Test Auto
+      driveStraightForDistanceCurrent();
    default:
       // Do nothing if no auto mode is selected
       break;
@@ -348,7 +351,7 @@ void MyRobot::dumpBridge()
    double time = Timer::GetFPGATimestamp();
    
    // Lower Stability wheel
-   stabilityWheelState = kFrontDeployed;
+   stabilityWheelState = kBackDeployed;
    runStabilityWheels();
    
    while ((Timer::GetFPGATimestamp() - time) < TIME_TO_DUMP_BRIDGE)
