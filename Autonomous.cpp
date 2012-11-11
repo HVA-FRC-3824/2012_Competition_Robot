@@ -3,7 +3,7 @@
 #define MIN_SPINUP_TIME             4
 #define AUTO_MAX_SPEED             .2
 // TODO - Determin distances
-#define DISTANCE_TO_CENTER_BRIDGE   5
+#define DISTANCE_TO_CENTER_BRIDGE   6.2
 #define DISTANCE_TO_ALLIANCE_BRIDGE 5
 #define TIME_TO_DUMP_BRIDGE         2
 
@@ -60,8 +60,11 @@ void MyRobot::Autonomous()
    case 4:
       // Drive Dump Balls Center Bridge Drive Forward and Shoot Balls
       driveToCenterBridge();
-      dumpBridge();
-      driveFromCenterBridge();
+      time = Timer::GetFPGATimestamp();
+      while (time - Timer::GetFPGATimestamp() > 2)
+      {
+         cameraControl();
+      }
       shootTwoBalls();
       break;
    case 5:
@@ -388,6 +391,7 @@ void MyRobot::driveToCenterBridge()
 
      while (IsAutonomous() && autoState != DONE)
      {
+        cameraControl();
         /************************ Run Stability Wheels *****************************/
         setStabilityWheelState();
         runStabilityWheels();
@@ -395,7 +399,7 @@ void MyRobot::driveToCenterBridge()
         switch (autoState)
         {
         case DRIVING:
-           if (m_robotDrive->DriveDistanceUsingVelocity(AUTO_MAX_SPEED, -DISTANCE_TO_CENTER_BRIDGE,
+           if (m_robotDrive->DriveDistanceUsingVelocity(AUTO_MAX_SPEED, DISTANCE_TO_CENTER_BRIDGE,
                  MAX_ACCELERATION_DISTANCE))
            {
               autoState = DONE;
