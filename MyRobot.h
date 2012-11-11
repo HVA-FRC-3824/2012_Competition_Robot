@@ -3,19 +3,23 @@
 
 #include "WPILib.h"
 #include "DashboardDataFormat.h"
+#include "ImageProcessing.h"
 
 /*************************** Jaguar ID Defines ********************************/
 #define RIGHT_DRIVE_MOTOR		 		2
 #define LEFT_DRIVE_MOTOR		 		3
 #define SHOOTER_WHEEL_MOTOR		 		4
 #define SHOOTER_ROTATE_MOTOR			5
-#define SHOOTER_WHEEL_MOTOR_REDUNDANT	6
 /******************************************************************************/
 
 /**************************** PWM PORT Defines ********************************/
 #define BACK_BALL_PICKUP_MOTOR			1
 #define FRONT_BALL_PICKUP_MOTOR			2
 #define FERRIS_WHEEL_MOTOR				3
+/******************************************************************************/
+
+/**************************** Analog I/O PORT Defines *************************/
+#define GYRO_PORT						1
 /******************************************************************************/
 
 /**************************** Digital I/O PORT Defines ************************/
@@ -34,6 +38,7 @@
 
 /**************************** USB PORT Defines ********************************/
 #define JOYSTICK_PORT					1
+#define BUTTON_BOX_PORT					2
 /******************************************************************************/
 
 /***************************** Joystick 1 Button Defines **********************/
@@ -49,14 +54,23 @@
 #define ROTATE_SHOOTER_CLOCKWISE		12
 /******************************************************************************/
 
-class RobotDemo: public SimpleRobot
+/***************************** Button Box Button Defines **********************/
+#define RESET_BALL_OFFSET				11
+#define INCREMENT_BALL_OFFSET			1
+#define DECREMENT_BALL_OFFSET			2
+/******************************************************************************/
+
+/***************************** Cypris Button Defines **************************/
+#define MINIBOT_PORT        			4
+/******************************************************************************/
+
+class MyRobot: public SimpleRobot
 {
 private:
 	DashboardDataFormat *m_dashboardDataFormat; // object to send data to the Driver station
 	CANJaguar *m_rightMotor;// Jaguar motor controllers
 	CANJaguar *m_leftMotor;
 	CANJaguar *m_shooterWheel;
-	CANJaguar *m_shooterWheelRedundant;
 	CANJaguar *m_shooterRotate;
 	Victor *m_frontBallPickup;
 	Victor *m_backBallPickup;
@@ -65,21 +79,37 @@ private:
 	Compressor *m_compressor;
 	DoubleSolenoid *m_ballLiftSolenoid;
 	Joystick *m_joystick; // only joystick
+	Joystick *m_buttonBox;
 	DigitalInput *m_ferrisWheelStop;
 	DigitalInput *m_bottomSlot;
 	Gyro *m_gyro;
 	Ultrasonic *ultra; // The ultra sonic sensor
 	DriverStation *m_driverStation;
-	double range;
+	double heightOfTriangle;
+	
+	// Array to hold the targets from the camera
+	double results[NUMBER_OF_TARGETS][NUMBER_OF_TARGET_PARAMETERS];
 
 public:
-	RobotDemo(void);
+	MyRobot(void);
 
 	//Drive left & right motors for 2 seconds then stop
 	void Autonomous(void);
 
 	//Runs the motors with arcade steering. 
 	void OperatorControl(void);
+	
+	// Read the buttons of the controllers and respond accordenlly
+	void ReadControls(bool ferrisRotate, bool previousSwitchValue);
+	
+	// Process the camera images
+	int ReadCamera(double &heightOfTriangle, double &distanceToTarget,
+			double &voltageToDriveShooter, double &valueToRotate);
+	
+	void AutonomouslyDriveShooter(int targetStatus, double distanceToTarget, double voltageToDriveShooter, double valueToRotate);
+	
+	// Sort the target array
+	void SortTargetArray(double targets[NUMBER_OF_TARGETS][NUMBER_OF_TARGET_PARAMETERS]);
 
 	// Send data to the dashboard
 	void SendDashboardData();

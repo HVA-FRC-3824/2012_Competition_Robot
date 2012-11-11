@@ -16,18 +16,18 @@ DashboardDataFormat::~DashboardDataFormat()
 //---------------------------------------------------------------------------------
 // Send the text box data.
 //---------------------------------------------------------------------------------
-void DashboardDataFormat::SendLCDData(double range, double rightSpeed,
+void DashboardDataFormat::SendLCDData(double height, double rightSpeed,
 		double leftSpeed, float rightSetValue, float leftSetValue,
 		double rightPosition, double leftPosition, float throttleValue)
 {
-	dsLCD->Printf(DriverStationLCD::kUser_Line1, 1, "Range: %f", range);
+	dsLCD->Printf(DriverStationLCD::kUser_Line1, 1, "Pixels: %f", height);
 	dsLCD->Printf(DriverStationLCD::kUser_Line2, 1, "%4.1f, %4.1f", rightSpeed, rightSetValue);
 	dsLCD->Printf(DriverStationLCD::kUser_Line3, 1, "%4.1f, %4.1f", leftSpeed, leftSetValue);
 	dsLCD->Printf(DriverStationLCD::kUser_Line4, 1, "Right Position: %f",
 			rightPosition);
 	dsLCD->Printf(DriverStationLCD::kUser_Line5, 1, "Left Position: %f",
 			leftPosition);
-	dsLCD->Printf(DriverStationLCD::kUser_Line6, 1, "Throttle Value: %f",
+	dsLCD->Printf(DriverStationLCD::kUser_Line6, 1, "Shooter Value: %f",
 			throttleValue);
 	dsLCD->UpdateLCD();
 }

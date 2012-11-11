@@ -19,7 +19,7 @@ class DashboardDataFormat : public SensorBase
 public:
 	DashboardDataFormat(void);
 	virtual ~DashboardDataFormat();
-	void SendLCDData(double range, double rightSpeed,
+	void SendLCDData(double height, double rightSpeed,
 			double leftSpeed, float rightSetValue, float leftSetValue,
 			double rightPosition, double leftPosition, float throttleValue);
 	void SendIOPortData(void);
