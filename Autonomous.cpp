@@ -8,12 +8,15 @@
 #define TIME_FOR_PISTON_TO_MOVE             1.0
 
 #define VELOCITY_FOR_TOP_GOAL_AT_KEY        2100.0
+#define VOLTAGE_FOR_TOP_GOAL_AT_KEY         6.7
 
 #define DISTANCE_TO_SHOOTING_POSITION_HIGH  56.0
 #define VELOCITY_TO_SHOOTING_POSITION_HIGH  2000.0
+#define VOLTAGE_TO_SHOOTING_POSITION_HIGH   6.3
 
 #define DISTANCE_TO_SHOOTING_POSITION_MID   12.0
 #define VELOCITY_TO_SHOOTING_POSITION_MID   1276.0
+#define VOLTAGE_TO_SHOOTING_POSITION_MID    4.4
 /*********************************************************************************/
 
 /**
@@ -62,11 +65,11 @@ void MyRobot::Autonomous()
       {
          // use the camera for tracking, if enabled
          // Note: also keeps the shooter wheel running
-         runShooterControl(VELOCITY_FOR_TOP_GOAL_AT_KEY);
+         runShooterControl(VELOCITY_FOR_TOP_GOAL_AT_KEY, VOLTAGE_FOR_TOP_GOAL_AT_KEY);
       }
 
       // Shoot Two Balls
-      shootTwoBalls(VELOCITY_FOR_TOP_GOAL_AT_KEY);
+      shootTwoBalls(VELOCITY_FOR_TOP_GOAL_AT_KEY, VOLTAGE_FOR_TOP_GOAL_AT_KEY);
       break;
    }
 
@@ -77,11 +80,11 @@ void MyRobot::Autonomous()
       {
          // use the camera for tracking, if enabled
          // Note: also keeps the shooter wheel running
-         runShooterControl(VELOCITY_FOR_TOP_GOAL_AT_KEY);
+         runShooterControl(VELOCITY_FOR_TOP_GOAL_AT_KEY, VOLTAGE_FOR_TOP_GOAL_AT_KEY);
       }
 
       // shoot 2 balls
-      shootTwoBalls(VELOCITY_FOR_TOP_GOAL_AT_KEY);
+      shootTwoBalls(VELOCITY_FOR_TOP_GOAL_AT_KEY, VOLTAGE_FOR_TOP_GOAL_AT_KEY);
       break;
    }
 
@@ -92,11 +95,11 @@ void MyRobot::Autonomous()
       {
          // use the camera for tracking, if enabled
          // Note: also keeps the shooter wheel running
-         runShooterControl(VELOCITY_FOR_TOP_GOAL_AT_KEY);
+         runShooterControl(VELOCITY_FOR_TOP_GOAL_AT_KEY, VOLTAGE_FOR_TOP_GOAL_AT_KEY);
       }
 
       // shoot 2 balls
-      shootTwoBalls(VELOCITY_FOR_TOP_GOAL_AT_KEY);
+      shootTwoBalls(VELOCITY_FOR_TOP_GOAL_AT_KEY, VOLTAGE_FOR_TOP_GOAL_AT_KEY);
       break;
    }
 
@@ -132,10 +135,10 @@ void MyRobot::Autonomous()
 
       // drive to the shooting position
       // Note: calls runShooterControl for aiming and keeps the shooter running
-      driveAndRunShooter(distanceToDrive, 0.4, VELOCITY_TO_SHOOTING_POSITION_HIGH);
+      driveAndRunShooter(distanceToDrive, 0.4, VELOCITY_TO_SHOOTING_POSITION_HIGH, VOLTAGE_TO_SHOOTING_POSITION_HIGH);
 
       // shoot 2 balls
-      shootTwoBalls(VELOCITY_FOR_TOP_GOAL_AT_KEY);
+      shootTwoBalls(VELOCITY_TO_SHOOTING_POSITION_HIGH, VOLTAGE_TO_SHOOTING_POSITION_HIGH);
 
       break;
    }
@@ -150,7 +153,7 @@ void MyRobot::Autonomous()
 
       // drive to the shooting position
       // Note: calls runShooterControl for aiming and keeps the shooter running
-      driveAndRunShooter(distanceToDrive, DEFAULT_AUTO_SPEED, VELOCITY_TO_SHOOTING_POSITION_HIGH);
+      driveAndRunShooter(distanceToDrive, DEFAULT_AUTO_SPEED, VELOCITY_TO_SHOOTING_POSITION_HIGH, VOLTAGE_TO_SHOOTING_POSITION_HIGH);
 
       // get the pressent time
       time = Timer::GetFPGATimestamp();
@@ -164,7 +167,7 @@ void MyRobot::Autonomous()
 //      }
 
       // shoot 2 balls
-      shootTwoBalls(VELOCITY_TO_SHOOTING_POSITION_HIGH);
+      shootTwoBalls(VELOCITY_TO_SHOOTING_POSITION_HIGH, VOLTAGE_TO_SHOOTING_POSITION_HIGH);
       break;
    }
 
@@ -176,7 +179,7 @@ void MyRobot::Autonomous()
 
       // drive to the shooting position
       // Note: calls runShooterControl for aiming and keeps the shooter running
-      driveAndRunShooter(distanceToDrive, DEFAULT_AUTO_SPEED, VELOCITY_TO_SHOOTING_POSITION_MID);
+      driveAndRunShooter(distanceToDrive, DEFAULT_AUTO_SPEED, VELOCITY_TO_SHOOTING_POSITION_MID, VOLTAGE_TO_SHOOTING_POSITION_MID);
 
       // get the pressent time
       time = Timer::GetFPGATimestamp();
@@ -190,7 +193,7 @@ void MyRobot::Autonomous()
 //      }
 
       // shoot 2 balls
-      shootTwoBalls(VELOCITY_TO_SHOOTING_POSITION_MID);
+      shootTwoBalls(VELOCITY_TO_SHOOTING_POSITION_MID, VOLTAGE_TO_SHOOTING_POSITION_MID);
       break;
    }
 
@@ -207,7 +210,7 @@ void MyRobot::Autonomous()
    }
 }
 
-void MyRobot::driveAndRunShooter(float distance, float speed, float defaultVelocity)
+void MyRobot::driveAndRunShooter(float distance, float speed, float defaultVelocity, float defaultVoltage)
 {
    enum
    {
@@ -223,7 +226,7 @@ void MyRobot::driveAndRunShooter(float distance, float speed, float defaultVeloc
 
    while (IsAutonomous() && (autoState != DONE))
    {
-      runShooterControl(defaultVelocity);
+      runShooterControl(defaultVelocity, defaultVoltage);
 
       switch (autoState)
       {
@@ -290,7 +293,7 @@ void MyRobot::driveStraightForwardAndBackForDistance()
    }
 }
 
-void MyRobot::shootOneBall(float defaultVelocity)
+void MyRobot::shootOneBall(float defaultVelocity, float defaultVoltage)
 {
    enum
    {
@@ -304,7 +307,7 @@ void MyRobot::shootOneBall(float defaultVelocity)
       switch (autoState)
       {
       case AIMING:
-         if (runShooterControl(defaultVelocity) || (Timer::GetFPGATimestamp()
+         if (runShooterControl(defaultVelocity, defaultVoltage) || (Timer::GetFPGATimestamp()
                - time) > 2)
          {
             autoState = SHOOT_FIRST_BALL;
@@ -314,7 +317,7 @@ void MyRobot::shootOneBall(float defaultVelocity)
          break;
 
       case SHOOT_FIRST_BALL:
-         runShooterControl(defaultVelocity);
+         runShooterControl(defaultVelocity, defaultVoltage);
          if ((Timer::GetFPGATimestamp() - time) > 1)
          {
             autoState = DONE;
@@ -328,7 +331,7 @@ void MyRobot::shootOneBall(float defaultVelocity)
    }
 }
 
-void MyRobot::shootTwoBalls(float defaultVelocity)
+void MyRobot::shootTwoBalls(float defaultVelocity, float defaultVoltage)
 {
    enum
    {
@@ -344,7 +347,7 @@ void MyRobot::shootTwoBalls(float defaultVelocity)
       switch (autoState)
       {
       case AIMING:
-         if (runShooterControl(defaultVelocity) || (Timer::GetFPGATimestamp()
+         if (runShooterControl(defaultVelocity, defaultVoltage) || (Timer::GetFPGATimestamp()
                - time) > 2)
          {
             autoState = SHOOT_FIRST_BALL;
@@ -354,7 +357,7 @@ void MyRobot::shootTwoBalls(float defaultVelocity)
          break;
 
       case SHOOT_FIRST_BALL:
-         runShooterControl(defaultVelocity);
+         runShooterControl(defaultVelocity, defaultVoltage);
          if ((Timer::GetFPGATimestamp() - time) > 1)
          {
             autoState = ROTATE_FERRIS;
@@ -365,7 +368,7 @@ void MyRobot::shootTwoBalls(float defaultVelocity)
          break;
 
       case ROTATE_FERRIS:
-         runShooterControl(defaultVelocity);
+         runShooterControl(defaultVelocity, defaultVoltage);
          //if (m_ferrisWheelStop->Get() == true && previousFerris == false)
          if (Timer::GetFPGATimestamp() - time > 1)
          {
@@ -377,7 +380,7 @@ void MyRobot::shootTwoBalls(float defaultVelocity)
          break;
 
       case SHOOT_SECOND_BALL:
-         runShooterControl(defaultVelocity);
+         runShooterControl(defaultVelocity, defaultVoltage);
          if ((Timer::GetFPGATimestamp() - time) > 3)
          {
             autoState = DONE;
@@ -399,7 +402,7 @@ void MyRobot::shootTwoBalls(float defaultVelocity)
  * Dump the bridge
  */
 void MyRobot::dumpBridge(float timeToHoldDownBridge,
-      float defaultShooterVelocity)
+      float defaultVelocity, float defaultVoltage)
 {
    enum
    {
@@ -411,7 +414,7 @@ void MyRobot::dumpBridge(float timeToHoldDownBridge,
    while (IsAutonomous() && autoState != DONE)
    {
       // Run the shooter so that the robot will be ready to shoot
-      runShooterControl(defaultShooterVelocity);
+      runShooterControl(defaultVelocity, defaultVoltage);
 
       switch (autoState)
       {

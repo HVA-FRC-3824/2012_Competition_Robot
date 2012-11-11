@@ -11,10 +11,12 @@
 
 // Incress the value of the Voltage offset to incress the distance of the shooter.
 // Calculated shooter voltage offset       29.32880164
-#define SHOOTER_VOLTAGE_OFFSET           29.42880164
+//#define SHOOTER_VOLTAGE_OFFSET           29.42880164  // Competition Original
+#define SHOOTER_VOLTAGE_OFFSET             29.62880164
 
 // Incress the value of the pixel offset in order to aim more to the right.
-#define PIXEL_OFFSET                     10.0
+//#define PIXEL_OFFSET                    10.0
+#define PIXEL_OFFSET                     15.0
 
 #define PIXEL_OFF_THRESHOLD              5.0
 #define ROTATION_OFF_THRESHOLD           .05
@@ -60,7 +62,7 @@ bool MyRobot::runShooterControl(float defaultVelocity, float defaultVoltage)
 
    /************************ Check if Image data is needed **********************/
    // Check to see if the shooter is to be controled by the robot or by the operators
-   if (m_driverStationEnhancedIO->GetDigital(AUTONOMOUSLY_RUN_SHOOTER) == true)
+   if (m_driverStationEnhancedIO->GetDigital(AUTONOMOUSLY_RUN_SHOOTER) == true && m_ferrisState == kStop)
    {
       // Process the camera images
       // Note: All method parameters are outputs

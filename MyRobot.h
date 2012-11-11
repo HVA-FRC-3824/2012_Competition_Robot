@@ -145,7 +145,8 @@
 #define ROTATE_CONTROLLER_D                     10.0
 
 #define SHOOTER_VELOCITY_P                       1.0
-#define SHOOTER_VELOCITY_I                       0.01
+//#define SHOOTER_VELOCITY_I                       0.01
+#define SHOOTER_VELOCITY_I                       0.005
 #define SHOOTER_VELOCITY_D                       0.0
 
 /*************************** Other Defines ************************************/
@@ -193,6 +194,7 @@ public:
    static void ferrisHandler(uint32_t mask, void *param)
    {
       MyRobot *robot = (MyRobot*)param;
+      robot->m_ferrisWheel->Set(0.0);
       robot->runFerrisWheel(kStop);
       robot->m_ferrisWheelStop->DisableInterrupts();
    }
@@ -221,8 +223,6 @@ private:
    DashboardDataFormat       *m_dashboardDataFormat; // object to send data to the Driver station
    HVA_Victor                *m_rightMotor; // Right drive motor
    HVA_Victor                *m_leftMotor; // Left drive motor
-   CurrentVelocityController *m_rightMotorVelocityPID; // Right Motor controlled by PID
-   CurrentVelocityController *m_leftMotorVelocityPID; // left Motor controlled by PID
    CANJaguar                 *m_shooterWheel; // Shooter fly wheel
    CANJaguar                 *m_shooterRotate; // Motor used to rotate shooter
    Victor                    *m_frontBallPickup; // Front ball pick-up motor
@@ -324,11 +324,11 @@ private:
          double targets[NUMBER_OF_TARGETS][NUMBER_OF_TARGET_PARAMETERS]);
 
    /************************ Autonomous Moves *********************************/
-   void driveAndRunShooter(float distance, float speed = DEFAULT_AUTO_SPEED, float defaultVelocity = 0.0);
+   void driveAndRunShooter(float distance, float speed = DEFAULT_AUTO_SPEED, float defaultVelocity = 0.0, float defaultVoltage = 0.0);
    void driveStraightForwardAndBackForDistance();
-   void shootOneBall(float defaultVelocity = 0.0);
-   void shootTwoBalls(float defaultVelocity = 0.0);
-   void dumpBridge(float timeToHoldDownBridge = DEFAULT_TIME_TO_HOLD_BRIDGE_DOWN, float defaultShooterVelocity = 0.0);
+   void shootOneBall(float defaultVelocity = 0.0, float defaultVoltage = 0.0);
+   void shootTwoBalls(float defaultVelocity = 0.0, float defaultVoltage = 0.0);
+   void dumpBridge(float timeToHoldDownBridge = DEFAULT_TIME_TO_HOLD_BRIDGE_DOWN, float defaultVelocity = 0.0, float defaultVoltage = 0.0);
 
    /************************ Data Sending *************************************/
    // Send data to the dashboard
