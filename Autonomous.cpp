@@ -1,5 +1,12 @@
 #include "MyRobot.h"
 
+#define MIN_SPINUP_TIME             4
+// TODO - Determin distances
+#define AUTO_MAX_SPEED             .2
+#define DISTANCE_TO_CENTER_BRIDGE   0
+#define DISTANCE_TO_ALLIANCE_BRIDGE 0
+#define TIME_TO_DUMP_BRIDGE         2
+
 /**
  * Drive left & right motors for 2 seconds then stop
  */
@@ -10,6 +17,8 @@ void MyRobot::Autonomous()
    m_leftMotor->EnableControl();
    m_shooterRotate->EnableControl();
    m_shooterWheel->EnableControl();
+   
+   double time;
 
    // Combined the autonomous switchs into one value
    int autoSwitchValue = (m_driverStation->GetDigitalIn(AUTO_SWITCH_2) << 2)
@@ -21,24 +30,50 @@ void MyRobot::Autonomous()
    switch (autoSwitchValue)
    {
    case 1:
-      // If auto 1 is selected then drive for distance
-      driveStraightForDistance();
+      // Shoot Two Balls
+      while((Timer::GetFPGATimestamp() - time) < MIN_SPINUP_TIME)
+      {
+         cameraControl();
+      }
+      shootTwoBalls();
       break;
    case 2:
-      // If auto 2 is selected then shoot 2 balls
-      shootOneBall();
+      // Wait 5 Sec Shoot Two Balls
+      time = Timer::GetFPGATimestamp();
+      while((Timer::GetFPGATimestamp() - time) < 5)
+      {
+         cameraControl();
+      }
+      shootTwoBalls();
       break;
    case 3:
-      // If auto 3 is selected, drive and shoot balls
-      driveAndShootTwo();
+      // Wait 10 Sec Shoot Two Balls
+      time = Timer::GetFPGATimestamp();
+      while((Timer::GetFPGATimestamp() - time) < 10)
+      {
+         cameraControl();
+      }
+      shootTwoBalls();
       break;
    case 4:
-      // Balence on the ramp
-      newBalance();
+      // Drive Dump Balls Center Bridge Drive Forward and Shoot Balls
+      driveToCenterBridge();
+      dumpBridge();
+      driveFromCenterBridge();
+      shootTwoBalls();
       break;
    case 5:
-      // Run current Velocity
-      driveStraightForDistanceCurrent();
+      // Drive Dump Balls Alliance Bridge Drive Forward and Shoot Balls
+      driveToAllianceBridge();
+      dumpBridge();
+      driveFromAllianceBridge();
+      shootTwoBalls();
+   case 6:
+      // Shoot Balls Drive Dump Balls on Alliance Bridge
+      shootTwoBalls();
+      driveToAllianceBridge();
+      dumpBridge();
+      break;
    default:
       // Do nothing if no auto mode is selected
       break;
@@ -140,12 +175,12 @@ void MyRobot::shootOneBall()
 
    double time = Timer::GetFPGATimestamp();
 
-   while (IsAutonomous())
+   while (IsAutonomous() && autoState != DONE)
    {
       switch (autoState)
       {
       case AIMING:
-         if (cameraControl() && (Timer::GetFPGATimestamp() - time) > 4)
+         if (cameraControl())
          {
             autoState = SHOOT_FIRST_BALL;
             m_ballLiftSolenoid->Set(DoubleSolenoid::kForward);
@@ -173,10 +208,10 @@ void MyRobot::shootTwoBalls()
       AIMING, SHOOT_FIRST_BALL, ROTATE_FERRIS, SHOOT_SECOND_BALL, DONE
    } autoState = AIMING;
 
-   double time;
+   double time = Timer::GetFPGATimestamp();;
    bool previousFerris = m_ferrisWheelStop->Get();
 
-   while (IsAutonomous())
+   while (IsAutonomous() && autoState != DONE)
    {
       switch (autoState)
       {
@@ -303,6 +338,178 @@ void MyRobot::driveAndShootTwo()
          break;
       }
    }
+}
+
+/**
+ * Dump the bridge
+ */
+void MyRobot::dumpBridge()
+{
+   double time = Timer::GetFPGATimestamp();
+   
+   // Lower Stability wheel
+   stabilityWheelState = kFrontDeployed;
+   runStabilityWheels();
+   
+   while ((Timer::GetFPGATimestamp() - time) < TIME_TO_DUMP_BRIDGE)
+   {
+   }
+   
+   // Raise Stablility wheel
+   stabilityWheelState = kNeitherDeployed;
+   runStabilityWheels();
+}
+
+/**
+ * Drive to the center bridge
+ */
+void MyRobot::driveToCenterBridge()
+{
+   enum
+     {
+        DRIVING, DONE
+     } autoState = DRIVING;
+
+     if (driveSetting == kPercentage)
+     {
+        setDriveModeToVelocity();
+     }
+
+     while (IsAutonomous() && autoState != DONE)
+     {
+        /************************ Run Stability Wheels *****************************/
+        setStabilityWheelState();
+        runStabilityWheels();
+
+        switch (autoState)
+        {
+        case DRIVING:
+           if (m_robotDrive->DriveDistanceUsingVelocity(AUTO_MAX_SPEED, -DISTANCE_TO_CENTER_BRIDGE,
+                 MAX_ACCELERATION_DISTANCE))
+           {
+              autoState = DONE;
+           }
+           break;
+        
+        case DONE:
+           m_robotDrive->ArcadeVelocityDriveStepped(0, 0, MAX_ACCELERATION_ARCADE);
+           break;
+        }
+     }
+}
+
+/**
+ * Drive From the center bridge
+ */
+void MyRobot::driveFromCenterBridge()
+{
+   enum
+     {
+        DRIVING, DONE
+     } autoState = DRIVING;
+
+     if (driveSetting == kPercentage)
+     {
+        setDriveModeToVelocity();
+     }
+
+     while (IsAutonomous() && autoState != DONE)
+     {
+        /************************ Run Stability Wheels *****************************/
+        setStabilityWheelState();
+        runStabilityWheels();
+
+        switch (autoState)
+        {
+        case DRIVING:
+           if (m_robotDrive->DriveDistanceUsingVelocity(AUTO_MAX_SPEED, DISTANCE_TO_CENTER_BRIDGE,
+                 MAX_ACCELERATION_DISTANCE))
+           {
+              autoState = DONE;
+           }
+           break;
+        
+        case DONE:
+           m_robotDrive->ArcadeVelocityDriveStepped(0, 0, MAX_ACCELERATION_ARCADE);
+           break;
+        }
+     }
+}
+
+/**
+ * Drive to the center bridge
+ */
+void MyRobot::driveToAllianceBridge()
+{
+   enum
+     {
+        DRIVING, DONE
+     } autoState = DRIVING;
+
+     if (driveSetting == kPercentage)
+     {
+        setDriveModeToVelocity();
+     }
+
+     while (IsAutonomous() && autoState != DONE)
+     {
+        /************************ Run Stability Wheels *****************************/
+        setStabilityWheelState();
+        runStabilityWheels();
+
+        switch (autoState)
+        {
+        case DRIVING:
+           if (m_robotDrive->DriveDistanceUsingVelocity(AUTO_MAX_SPEED, -DISTANCE_TO_ALLIANCE_BRIDGE,
+                 MAX_ACCELERATION_DISTANCE))
+           {
+              autoState = DONE;
+           }
+           break;
+        
+        case DONE:
+           m_robotDrive->ArcadeVelocityDriveStepped(0, 0, MAX_ACCELERATION_ARCADE);
+           break;
+        }
+     }
+}
+
+/**
+ * Drive From the center bridge
+ */
+void MyRobot::driveFromAllianceBridge()
+{
+   enum
+     {
+        DRIVING, DONE
+     } autoState = DRIVING;
+
+     if (driveSetting == kPercentage)
+     {
+        setDriveModeToVelocity();
+     }
+
+     while (IsAutonomous() && autoState != DONE)
+     {
+        /************************ Run Stability Wheels *****************************/
+        setStabilityWheelState();
+        runStabilityWheels();
+
+        switch (autoState)
+        {
+        case DRIVING:
+           if (m_robotDrive->DriveDistanceUsingVelocity(AUTO_MAX_SPEED, DISTANCE_TO_ALLIANCE_BRIDGE,
+                 MAX_ACCELERATION_DISTANCE))
+           {
+              autoState = DONE;
+           }
+           break;
+        
+        case DONE:
+           m_robotDrive->ArcadeVelocityDriveStepped(0, 0, MAX_ACCELERATION_ARCADE);
+           break;
+        }
+     }
 }
 
 /*****************************************************************************/

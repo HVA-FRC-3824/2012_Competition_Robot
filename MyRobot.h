@@ -247,6 +247,11 @@ private:
    void driveAndShootTwo();
    void balance();
    void newBalance();
+   void driveToCenterBridge();
+   void driveToAllianceBridge();
+   void driveFromCenterBridge();
+   void driveFromAllianceBridge();
+   void dumpBridge();
 
    /************************ Data Sending *************************************/
    // Send data to the dashboard
